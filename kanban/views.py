@@ -4,10 +4,10 @@ from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Column
+from .models import Column, Note
 from django.views.generic.edit import CreateView
 from django.db import transaction
-from .serializers import ColumnSerializer
+from .serializers import ColumnSerializer, NoteSerializer
 
 
 class ColumnAPIView(APIView):
@@ -82,29 +82,106 @@ class ColumnAPIView(APIView):
 
 
 class ColumnHTMLView(View):
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         api_view_instance = ColumnAPIView()
         api_response = api_view_instance.get(request)
         data = api_response.data
 
         return render(request, 'your_template.html', {'data': data}) # to już wam zostawiam
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         api_view_instance = ColumnAPIView()
         api_response = api_view_instance.post(request)
         data = api_response.data
 
         return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
 
-    def put(self, request, *args, **kwargs):
+    def put(self, request):
         api_view_instance = ColumnAPIView()
         api_response = api_view_instance.put(request)
         data = api_response.data
 
         return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
 
-    def delete(self, request, *args, **kwargs):
+    def delete(self, request):
         api_view_instance = ColumnAPIView()
+        api_response = api_view_instance.delete(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
+
+
+class NoteAPIView(APIView):
+    def get(self, request):
+        try:
+            id = request.data['id']
+            column = Column.objects.get(id=id)
+            notes = Note.objects.filter(column=column)
+
+            serializer = NoteSerializer(notes, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Column.DoesNotExist:
+            return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request):
+        if not request.data['id']:
+            return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        column = Column.objects.get(id=id)
+        if column is None:
+            return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        name = request.data['name'] or ""
+        note = Note.objects.create(name=name, column=column)
+        note.save()
+        serializer = NoteSerializer(note)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+    def put(self, request):
+        if not request.data['id']:
+            return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        note = Note.objects.get(id=id)
+        if note is None:
+            return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        if request.data['name']:
+            note.name = request.data["name"]
+        note.save()
+        serializer = NoteSerializer(note)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        if not request.data['id']:
+            return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        note = Note.objects.get(id=id)
+        if note is None:
+            return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        note.delete()
+        return Response(status=status.HTTP_200_OK)
+
+
+class NoteHTMLView(View):
+    def get(self, request):
+        api_view_instance = NoteAPIView()
+        api_response = api_view_instance.get(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data}) # to już wam zostawiam
+
+    def post(self, request):
+        api_view_instance = NoteAPIView()
+        api_response = api_view_instance.post(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
+
+    def put(self, request):
+        api_view_instance = NoteAPIView()
+        api_response = api_view_instance.put(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
+
+    def delete(self, request):
+        api_view_instance = NoteAPIView()
         api_response = api_view_instance.delete(request)
         data = api_response.data
 

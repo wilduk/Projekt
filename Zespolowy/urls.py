@@ -16,9 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from kanban.views import ColumnAPIView
+from kanban.views import ColumnAPIView, NoteAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/columns/', ColumnAPIView.as_view())
+    path('api/columns/', ColumnAPIView.as_view()),
+    path('api/notes/', NoteAPIView.as_view())
 ]

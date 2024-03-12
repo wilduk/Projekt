@@ -7,6 +7,6 @@ class Column(models.Model):
     max = models.IntegerField(null=True)
 
 
-class Object(models.Model):
+class Note(models.Model):
     column = models.ForeignKey(Column, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, null=True)
