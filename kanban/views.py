@@ -79,3 +79,33 @@ class ColumnAPIView(APIView):
             return Response(ColumnSerializer(column).data, status=status.HTTP_200_OK)
         except Column.DoesNotExist:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ColumnHTMLView(View):
+    def get(self, request, *args, **kwargs):
+        api_view_instance = ColumnAPIView()
+        api_response = api_view_instance.get(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data}) # to już wam zostawiam
+
+    def post(self, request, *args, **kwargs):
+        api_view_instance = ColumnAPIView()
+        api_response = api_view_instance.post(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
+
+    def put(self, request, *args, **kwargs):
+        api_view_instance = ColumnAPIView()
+        api_response = api_view_instance.put(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
+
+    def delete(self, request, *args, **kwargs):
+        api_view_instance = ColumnAPIView()
+        api_response = api_view_instance.delete(request)
+        data = api_response.data
+
+        return render(request, 'your_template.html', {'data': data})  # to już wam zostawiam
