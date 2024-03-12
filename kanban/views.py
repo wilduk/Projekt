@@ -13,13 +13,14 @@ from .serializers import ColumnSerializer
 class ColumnAPIView(APIView):
     def post(self, request):
         position = request.data.get('position')
+        highest = Column.objects.order_by('-position').first()
         if position is None:
-            highest_position = Column.objects.order_by('-position').first()
-            if highest_position:
-                position = highest_position.position + 1
+            if highest:
+                position = highest.position + 1
             else:
                 position = 1
-
+        elif position > highest.position:
+            position = highest.position + 1
         else:
             with transaction.atomic():
                 columns_to_update = Column.objects.filter(position__gte=position)
