@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Column, Object
+from .models import Column, Note
 
 
 class ColumnSerializer(serializers.ModelSerializer):
@@ -8,7 +8,7 @@ class ColumnSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ObjectSerializer(serializers.ModelSerializer):
+class NoteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Column
+        model = Note
         fields = '__all__'
