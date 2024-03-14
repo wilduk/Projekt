@@ -28,6 +28,8 @@ class ColumnAPIView(APIView):
                 columns_to_update = columns_to_update.order_by('-position')
                 for column in columns_to_update:
                     column.position += 1
+                    column.position += 1
+                    column.position -= 1
                     column.save()
 
         column_data = {
