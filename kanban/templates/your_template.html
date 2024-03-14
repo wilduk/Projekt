@@ -107,6 +107,16 @@
     <button type="button" onclick="addNote()">Dodaj notatke</button>
 </form>
 
+<!-- Formularz edycji notatki -->
+<form id="edit-column-form" style="display: none;">
+    <input type="hidden" id="edit-column-id" name="id">
+    <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
+    <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
+    <button type="button" onclick="editColumn()">Zapisz zmiany</button>
+    <button type="button" id="cancel-edit">Anuluj</button>
+</form>
+
+
 <script>
     function getCookie(name) {
             let cookieValue = null;
