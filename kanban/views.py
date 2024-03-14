@@ -14,10 +14,8 @@ class ColumnAPIView(APIView):
     def post(self, request):
         position = request.data.get('position')
         highest = Column.objects.order_by('-position').first()
-
         if position is None:
             if highest:
-
                 position = highest.position + 1
             else:
 
