@@ -25,11 +25,42 @@
             border-radius: 5px;
         }
         .note {
-            background-color: #fff;
-            border: 1px solid #ddd;
+            background-color: grey;
+            border: 3px solid black;
             padding: 10px;
             margin: 5px 0;
             border-radius: 5px;
+            text-align: center;
+        }
+
+        body {
+            background-image: url("https://static.vecteezy.com/system/resources/previews/005/585/911/original/abstract-dark-purple-background-overlap-layer-on-dark-space-for-background-design-exclusive-wallpaper-design-for-poster-brochure-presentation-website-etc-vector.jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: black;
+            height: 100%;
+        }
+        h1 {
+                font-size: 50px;
+                text-align: center;
+	            color: black;
+	            background-color: rgba(0, 0, 0, 0.05);
+
+        }
+        h2 {
+                font-size: 40px;
+                text-align: center;
+	            color: black;
+	            background-color: rgba(0, 0, 0, 0.05);
+
+        }
+        h3 {
+                font-size: 35px;
+                text-align: center;
+	            color: black;
+	            background-color: rgba(0, 0, 0, 0.05);
+
         }
     </style>
 </head>
@@ -65,8 +96,15 @@
     <input type="hidden" id="edit-column-id" name="id">
     <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
     <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
-    <button type="submit">Zapisz zmiany</button>
+    <button type="button" onclick="editColumn()">Zapisz zmiany</button>
     <button type="button" id="cancel-edit">Anuluj</button>
+</form>
+
+<!-- Formularz notatki kolumny -->
+<form id="add-note-form">
+    <input type="text" id="name" name="name" placeholder="Treść notatki">
+    <input type="number" id="column" name="column" placeholder="Kolumna">
+    <button type="button" onclick="addNote()">Dodaj notatke</button>
 </form>
 
 <script>
@@ -93,6 +131,33 @@
             console.log(name);
             document.getElementById("column-"+id).appendChild(noteDiv);
         }
+
+        function deleteNote(id) {
+        const json = JSON.stringify({id: id});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/notes/', {method: 'DELETE', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
+
+    function saveNoteChanges(id) {
+        const name = document.getElementById('name').value;
+        const max = parseInt(document.getElementById('max').value);
+        const position = parseInt(document.getElementById('position').value);
+        const json = JSON.stringify({id: id, name: name, max: max, position: position});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {method: 'PUT', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
 
 
         async function getNotes(id) {
@@ -136,12 +201,11 @@
             .catch(error => console.error(error));
     }
 
-    function saveColumnChanges() {
-        const columnId = formData.get('id');
+    function saveColumnChanges(id) {
         const name = document.getElementById('name').value;
         const max = parseInt(document.getElementById('max').value);
         const position = parseInt(document.getElementById('position').value);
-        const json = JSON.stringify({id: columnId, name: name, max: max, position: position});
+        const json = JSON.stringify({id: id, name: name, max: max, position: position});
         const csrftoken = getCookie('csrftoken');
         fetch('/api/columns/', {method: 'PUT', headers: {
                 'Content-Type': 'application/json',
