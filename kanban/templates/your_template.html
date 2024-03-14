@@ -96,7 +96,7 @@
     <input type="hidden" id="edit-column-id" name="id">
     <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
     <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
-    <button type="button" onclick="editColumn()">Zapisz zmiany</button>
+    <button type="button" onclick="saveColumnChanges()">Zapisz zmiany</button>
     <button type="button" id="cancel-edit">Anuluj</button>
 </form>
 
@@ -112,6 +112,7 @@
     <input type="hidden" id="edit-column-id" name="id">
     <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
     <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
+    <input type="number" id="edit-column-position" name="position" placeholder="Pozycja kolumny">
     <button type="button" onclick="editColumn()">Zapisz zmiany</button>
     <button type="button" id="cancel-edit">Anuluj</button>
 </form>
@@ -154,7 +155,8 @@
             .catch(error => console.error(error));
     }
 
-    function saveNoteChanges(id) {
+    function saveNoteChanges() {
+        const id = document.getElementById('id').value;
         const name = document.getElementById('name').value;
         const max = parseInt(document.getElementById('max').value);
         const position = parseInt(document.getElementById('position').value);
@@ -211,10 +213,11 @@
             .catch(error => console.error(error));
     }
 
-    function saveColumnChanges(id) {
-        const name = document.getElementById('name').value;
-        const max = parseInt(document.getElementById('max').value);
-        const position = parseInt(document.getElementById('position').value);
+    function saveColumnChanges() {
+        const id = document.getElementById('edit-column-id').value;
+        const name = document.getElementById('edit-column-name').value;
+        const max = parseInt(document.getElementById('edit-column-max').value);
+        const position = parseInt(document.getElementById('edit-column-position').value);
         const json = JSON.stringify({id: id, name: name, max: max, position: position});
         const csrftoken = getCookie('csrftoken');
         fetch('/api/columns/', {method: 'PUT', headers: {
