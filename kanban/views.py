@@ -1,7 +1,6 @@
 from django.shortcuts import render
 from django.views import View
 from django.db import models
-from django.views.decorators.http import require_http_methods
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -36,6 +35,8 @@ class ColumnAPIView(APIView):
             'max': request.data.get('max', None)
         }
 
+        print(column_data)
+
         serializer = ColumnSerializer(data=column_data)
         if serializer.is_valid():
             serializer.save()
@@ -48,41 +49,38 @@ class ColumnAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request):
-        column_id = request.data['id']
-        column = Column.objects.get(id=column_id)
-        if column is None:
+        try:
+            column_id = request.data['id']
+            column = Column.objects.get(id=column_id)
+            column.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Column.DoesNotExist:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        column.delete()
-        columns_to_update = Column.objects.filter(position__gt=column.position)
-        for column in columns_to_update:
-            column.position -= 1
-            column.save()
-
-        return Response(status=status.HTTP_200_OK)
 
     def put(self, request):
-        column_id = request.data['id']
-        new_position = request.data.get('position')
-        column = Column.objects.get(id=column_id)
-        if column is None:
+        try:
+            column_id = request.data['id']
+            new_position = request.data.get('position')
+            column = Column.objects.get(id=column_id)
+            if new_position is not None and new_position != column.position:
+                columns_to_update = Column.objects.filter(position__gte=min(new_position, column.position),
+                                                          position__lte=max(new_position, column.position)).exclude(
+                    id=column_id)
+                if new_position > column.position:
+                    columns_to_update.update(position=models.F('position') - 1)
+                else:
+                    columns_to_update.update(position=models.F('position') + 1)
+
+                column.position = new_position
+
+            if 'name' in request.data:
+                column.name = request.data['name']
+            if 'max' in request.data:
+                column.max = request.data['max']
+            column.save()
+            return Response(ColumnSerializer(column).data, status=status.HTTP_200_OK)
+        except Column.DoesNotExist:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        if new_position is not None and new_position != column.position:
-            columns_to_update = Column.objects.filter(position__gte=min(new_position, column.position),
-                                                      position__lte=max(new_position, column.position)).exclude(
-                id=column_id)
-            if new_position > column.position:
-                columns_to_update.update(position=models.F('position') - 1)
-            else:
-                columns_to_update.update(position=models.F('position') + 1)
-
-            column.position = new_position
-        if 'name' in request.data:
-            column.name = request.data['name']
-        if 'max' in request.data:
-            column.max = request.data['max']
-        column.save()
-        return Response(ColumnSerializer(column).data, status=status.HTTP_200_OK)
-
 
 
 class ColumnHTMLView(View):
@@ -118,7 +116,7 @@ class ColumnHTMLView(View):
 class NoteAPIView(APIView):
     def get(self, request):
         try:
-            id = request.data['id']
+            id = request.GET.get('id')
             column = Column.objects.get(id=id)
             notes = Note.objects.filter(column=column)
 
