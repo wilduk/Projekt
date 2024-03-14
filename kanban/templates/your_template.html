@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Board</title>
+    <style>
+        body {
+            overflow-x: auto;
+        }
+
+        .columns-container {
+            white-space: nowrap;
+        }
+
+        .column {
+            display: inline-block;
+            vertical-align: top;
+            height: 100%;
+            width: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .note {
+            background-color: grey;
+            border: 3px solid black;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        body {
+            background-image: url("https://static.vecteezy.com/system/resources/previews/005/585/911/original/abstract-dark-purple-background-overlap-layer-on-dark-space-for-background-design-exclusive-wallpaper-design-for-poster-brochure-presentation-website-etc-vector.jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: black;
+            height: 100%;
+        }
+        h1 {
+                font-size: 50px;
+                text-align: center;
+	            color: black;
+	            background-color: rgba(0, 0, 0, 0.05);
+
+        }
+        h2 {
+                font-size: 40px;
+                text-align: center;
+	            color: black;
+	            background-color: rgba(0, 0, 0, 0.05);
+
+        }
+        h3 {
+                font-size: 35px;
+                text-align: center;
+	            color: black;
+	            background-color: rgba(0, 0, 0, 0.05);
+
+        }
+    </style>
+</head>
+<body>
+
+<div class="columns-container">
+    {% for column in data %}
+        <div class="column">
+            <h2>{{ column.name }}</h2>
+            <p>Max: {{ column.max }}</p>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    getNotes({{ column.id }});
+                });
+            </script>
+            <div id="column-{{ column.id }}"></div>
+            <!-- Dodano przycisk do edycji kolumny -->
+            <button onclick="editColumn('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj kolumnę</button>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Formularz dodawania kolumny -->
+<form id="add-column-form">
+    <input type="text" id="name" name="name" placeholder="Nazwa kolumny">
+    <input type="number" id="max" name="max" placeholder="Maksymalna ilość">
+    <input type="number" id="position" name="position" placeholder="Pozycja kolumny">
+    <button type="button" onclick="addColumn()">Dodaj kolumnę</button>
+</form>
+
+<!-- Formularz edycji kolumny -->
+<form id="edit-column-form" style="display: none;">
+    <input type="hidden" id="edit-column-id" name="id">
+    <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
+    <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
+    <button type="button" onclick="saveColumnChanges()">Zapisz zmiany</button>
+    <button type="button" id="cancel-edit">Anuluj</button>
+</form>
+
+<!-- Formularz notatki kolumny -->
+<form id="add-note-form">
+    <input type="text" id="name" name="name" placeholder="Treść notatki">
+    <input type="number" id="column" name="column" placeholder="Kolumna">
+    <button type="button" onclick="addNote()">Dodaj notatke</button>
+</form>
+
+<!-- Formularz edycji notatki -->
+<form id="edit-column-form" style="display: none;">
+    <input type="hidden" id="edit-column-id" name="id">
+    <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
+    <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
+    <input type="number" id="edit-column-position" name="position" placeholder="Pozycja kolumny">
+    <button type="button" onclick="editColumn()">Zapisz zmiany</button>
+    <button type="button" id="cancel-edit">Anuluj</button>
+</form>
+
+
+<script>
+    function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function addNote(id, name){
+            var noteDiv = document.createElement("div");
+            noteDiv.classList.add("note");
+            noteDiv.textContent = name;
+            console.log(name);
+            document.getElementById("column-"+id).appendChild(noteDiv);
+        }
+
+        function deleteNote(id) {
+        const json = JSON.stringify({id: id});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/notes/', {method: 'DELETE', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
+
+    function saveNoteChanges() {
+        const id = document.getElementById('id').value;
+        const name = document.getElementById('name').value;
+        const max = parseInt(document.getElementById('max').value);
+        const position = parseInt(document.getElementById('position').value);
+        const json = JSON.stringify({id: id, name: name, max: max, position: position});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {method: 'PUT', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
+
+
+        async function getNotes(id) {
+            const csrftoken = getCookie('csrftoken');
+            const data = await fetch('/api/notes/?id='+id, {method: 'GET', headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+            }})
+                .then(response => response.json())
+                .catch(error => console.error(error));
+            data.forEach(function(note) {
+                addNote(id,note.name);
+            })
+        }
+
+        // Funkcja do dodawania nowej kolumny
+    function addColumn() {
+        const name = document.getElementById('name').value;
+        const max = parseInt(document.getElementById('max').value);
+        const position = parseInt(document.getElementById('position').value);
+        const json = JSON.stringify({name: name, max: max, position: position});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {method: 'POST', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
+
+    function deleteColumn(id) {
+        const json = JSON.stringify({id: id});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {method: 'DELETE', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
+
+    function saveColumnChanges() {
+        const id = document.getElementById('edit-column-id').value;
+        const name = document.getElementById('edit-column-name').value;
+        const max = parseInt(document.getElementById('edit-column-max').value);
+        const position = parseInt(document.getElementById('edit-column-position').value);
+        const json = JSON.stringify({id: id, name: name, max: max, position: position});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {method: 'PUT', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error(error));
+    }
+
+    function editColumn(columnId, columnName, columnMax) {
+        document.getElementById('edit-column-form').style.display = 'block';
+        document.getElementById('add-column-form').style.display = 'none';
+        document.getElementById('edit-column-form').elements.id.value = columnId;
+        document.getElementById('edit-column-form').elements.name.value = columnName;
+        document.getElementById('edit-column-form').elements.max.value = columnMax;
+    }
+
+    function cancelEdit() {
+        document.getElementById('edit-column-form').style.display = 'none';
+        document.getElementById('add-column-form').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
