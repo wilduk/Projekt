@@ -28,8 +28,6 @@ class ColumnAPIView(APIView):
                 columns_to_update = columns_to_update.order_by('-position')
                 for column in columns_to_update:
                     column.position += 1
-                    column.position += 1
-                    column.position -= 1
                     column.save()
 
         column_data = {
@@ -121,7 +119,7 @@ class NoteAPIView(APIView):
         try:
             id = request.GET.get('id')
             column = Column.objects.get(id=id)
-            notes = Note.objects.filter(column=column)
+            notes = Note.objects.filter(column=column).order_by('position')
 
             serializer = NoteSerializer(notes, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -135,7 +133,17 @@ class NoteAPIView(APIView):
         if column is None:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
         name = request.data['name'] or ""
-        note = Note.objects.create(name=name, column=column)
+        position = request.data['position']
+        if position is not None:
+            with transaction.atomic():
+                columns_to_update = Column.objects.filter(position__gte=position)
+                columns_to_update = columns_to_update.order_by('-position')
+                for column in columns_to_update:
+                    column.position += 1
+                    column.save()
+        else:
+            position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+        note = Note.objects.create(name=name, column=column, position=position)
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -149,6 +157,17 @@ class NoteAPIView(APIView):
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
         if request.data['name']:
             note.name = request.data["name"]
+        new_position = request.data['position']
+        if new_position is not None and new_position != note.position:
+            notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
+                                                      position__lte=max(new_position, note.position)).exclude(
+                id=note.id)
+            if new_position > note.position:
+                notes_to_update.update(position=models.F('position') - 1)
+            else:
+                notes_to_update.update(position=models.F('position') + 1)
+
+            note.position = new_position
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
