@@ -4,65 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Board</title>
-    <style>
-        body {
-            overflow-x: auto;
-        }
-
-        .columns-container {
-            white-space: nowrap;
-        }
-
-        .column {
-            display: inline-block;
-            vertical-align: top;
-            height: 100%;
-            width: 300px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin: 10px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-        }
-        .note {
-            background-color: grey;
-            border: 3px solid black;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            text-align: center;
-        }
-
-        body {
-            background-image: url("https://static.vecteezy.com/system/resources/previews/005/585/911/original/abstract-dark-purple-background-overlap-layer-on-dark-space-for-background-design-exclusive-wallpaper-design-for-poster-brochure-presentation-website-etc-vector.jpg");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            color: black;
-            height: 100%;
-        }
-        h1 {
-                font-size: 50px;
-                text-align: center;
-	            color: black;
-	            background-color: rgba(0, 0, 0, 0.05);
-
-        }
-        h2 {
-                font-size: 40px;
-                text-align: center;
-	            color: black;
-	            background-color: rgba(0, 0, 0, 0.05);
-
-        }
-        h3 {
-                font-size: 35px;
-                text-align: center;
-	            color: black;
-	            background-color: rgba(0, 0, 0, 0.05);
-
-        }
-    </style>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
 </head>
 <body>
 
@@ -79,15 +22,6 @@
             <div id="column-{{ column.id }}"></div>
             <!-- Dodano przycisk do edycji kolumny -->
             <button onclick="editColumn('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj kolumnę</button>
-            <!---->
-            <form id="add-note-form">
-                <input type="text" id="note-name-{{ column.id }}" name="name" placeholder="Treść notatki">
-                <!--<input type="number" id="note-column" name="column" placeholder="Kolumna">-->
-                <button type="button" onclick="addNote('{{ column.id }}')">Dodaj notatke</button>
-            </form>
-
-            <!--<button onclick="deleteColumn('{{ column.id }}')">Usuń kolumnę</button>-->
-            <!---->
         </div>
     {% endfor %}
 </div>
@@ -111,8 +45,8 @@
 
 <!-- Formularz notatki kolumny -->
 <form id="add-note-form">
-    <input type="text" id="note-name" name="name" placeholder="Treść notatki">
-    <input type="number" id="note-column" name="column" placeholder="Kolumna">
+    <input type="text" id="name" name="name" placeholder="Treść notatki">
+    <input type="number" id="column" name="column" placeholder="Kolumna">
     <button type="button" onclick="addNote()">Dodaj notatke</button>
 </form>
 
@@ -144,25 +78,12 @@
             return cookieValue;
         }
 
-        function addNote(id){
-            var name = document.getElementById('note-name-'+id).value;//#
-            //var id = document.getElementById('note-column').value;
+        function addNote(id, name){
             var noteDiv = document.createElement("div");
             noteDiv.classList.add("note");
             noteDiv.textContent = name;
             console.log(name);
             document.getElementById("column-"+id).appendChild(noteDiv);
-            id=parseInt(id)
-
-            const json = JSON.stringify({id: id, name: name});
-                const csrftoken = getCookie('csrftoken');
-                fetch('/api/notes/', {method: 'POST', headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrftoken
-                }, body: json})
-                    .then(response => response.json())
-                    .then(data => console.log(data))
-                    .catch(error => console.error(error));
         }
 
         function deleteNote(id) {
