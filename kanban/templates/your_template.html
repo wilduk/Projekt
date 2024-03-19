@@ -79,6 +79,15 @@
             <div id="column-{{ column.id }}"></div>
             <!-- Dodano przycisk do edycji kolumny -->
             <button onclick="editColumn('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj kolumnę</button>
+            <!---->
+            <form id="add-note-form">
+                <input type="text" id="note-name-{{ column.id }}" name="name" placeholder="Treść notatki">
+                <!--<input type="number" id="note-column" name="column" placeholder="Kolumna">-->
+                <button type="button" onclick="addNote('{{ column.id }}')">Dodaj notatke</button>
+            </form>
+
+            <!--<button onclick="deleteColumn('{{ column.id }}')">Usuń kolumnę</button>-->
+            <!---->
         </div>
     {% endfor %}
 </div>
@@ -102,8 +111,8 @@
 
 <!-- Formularz notatki kolumny -->
 <form id="add-note-form">
-    <input type="text" id="name" name="name" placeholder="Treść notatki">
-    <input type="number" id="column" name="column" placeholder="Kolumna">
+    <input type="text" id="note-name" name="name" placeholder="Treść notatki">
+    <input type="number" id="note-column" name="column" placeholder="Kolumna">
     <button type="button" onclick="addNote()">Dodaj notatke</button>
 </form>
 
@@ -135,12 +144,25 @@
             return cookieValue;
         }
 
-        function addNote(id, name){
+        function addNote(id){
+            var name = document.getElementById('note-name-'+id).value;//#
+            //var id = document.getElementById('note-column').value;
             var noteDiv = document.createElement("div");
             noteDiv.classList.add("note");
             noteDiv.textContent = name;
             console.log(name);
             document.getElementById("column-"+id).appendChild(noteDiv);
+            id=parseInt(id)
+
+            const json = JSON.stringify({id: id, name: name});
+                const csrftoken = getCookie('csrftoken');
+                fetch('/api/notes/', {method: 'POST', headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                }, body: json})
+                    .then(response => response.json())
+                    .then(data => console.log(data))
+                    .catch(error => console.error(error));
         }
 
         function deleteNote(id) {
