@@ -4,65 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Board</title>
-    <style>
-        body {
-            overflow-x: auto;
-        }
-
-        .columns-container {
-            white-space: nowrap;
-        }
-
-        .column {
-            display: inline-block;
-            vertical-align: top;
-            height: 100%;
-            width: 300px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin: 10px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
-        }
-        .note {
-            background-color: grey;
-            border: 3px solid black;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            text-align: center;
-        }
-
-        body {
-            background-image: url("https://static.vecteezy.com/system/resources/previews/005/585/911/original/abstract-dark-purple-background-overlap-layer-on-dark-space-for-background-design-exclusive-wallpaper-design-for-poster-brochure-presentation-website-etc-vector.jpg");
-            background-size: cover;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            color: black;
-            height: 100%;
-        }
-        h1 {
-                font-size: 50px;
-                text-align: center;
-	            color: black;
-	            background-color: rgba(0, 0, 0, 0.05);
-
-        }
-        h2 {
-                font-size: 40px;
-                text-align: center;
-	            color: black;
-	            background-color: rgba(0, 0, 0, 0.05);
-
-        }
-        h3 {
-                font-size: 35px;
-                text-align: center;
-	            color: black;
-	            background-color: rgba(0, 0, 0, 0.05);
-
-        }
-    </style>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
 </head>
 <body>
 
