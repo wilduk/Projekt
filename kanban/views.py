@@ -127,23 +127,32 @@ class NoteAPIView(APIView):
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request):
+        print(1)
+        id = request.data['id']
         if not request.data['id']:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
         column = Column.objects.get(id=id)
+        print(3)
         if column is None:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        name = request.data['name'] or ""
-        position = request.data['position']
-        if position is not None:
+        name = request.data['name']
+        if name is None:
+            name = "column " + (Note.objects.order_by("-id").first.id+1)
+        position = 0
+        if "position" in request.data is None:
+            position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+        else:
             with transaction.atomic():
                 columns_to_update = Column.objects.filter(position__gte=position)
                 columns_to_update = columns_to_update.order_by('-position')
-                for column in columns_to_update:
-                    column.position += 1
-                    column.save()
-        else:
-            position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+                for col in columns_to_update:
+                    col.position += 1
+                    col.save()
+        print(6)
+        print(id)
+        print(column.id)
         note = Note.objects.create(name=name, column=column, position=position)
+        print(7)
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

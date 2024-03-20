@@ -22,6 +22,12 @@
             <div id="column-{{ column.id }}"></div>
             <!-- Dodano przycisk do edycji kolumny -->
             <button onclick="editColumn('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj kolumnę</button>
+
+            <form id="add-note-form">
+                <input type="text" id="name-{{ column.id }}" name="name" placeholder="Treść notatki">
+                <!--<input type="number" id="column" name="column" placeholder="Kolumna">-->
+                <button type="button" onclick="createNote('{{ column.id }}')">Dodaj notatke</button>
+            </form>
         </div>
     {% endfor %}
 </div>
@@ -40,24 +46,16 @@
     <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
     <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
     <button type="button" onclick="saveColumnChanges()">Zapisz zmiany</button>
-    <button type="button" id="cancel-edit">Anuluj</button>
-</form>
-
-<!-- Formularz notatki kolumny -->
-<form id="add-note-form">
-    <input type="text" id="name" name="name" placeholder="Treść notatki">
-    <input type="number" id="column" name="column" placeholder="Kolumna">
-    <button type="button" onclick="addNote()">Dodaj notatke</button>
+    <button type="button" id="cancel-column-edit">Anuluj</button>
 </form>
 
 <!-- Formularz edycji notatki -->
-<form id="edit-column-form" style="display: none;">
-    <input type="hidden" id="edit-column-id" name="id">
-    <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
-    <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
-    <input type="number" id="edit-column-position" name="position" placeholder="Pozycja kolumny">
-    <button type="button" onclick="editColumn()">Zapisz zmiany</button>
-    <button type="button" id="cancel-edit">Anuluj</button>
+<form id="edit-note-form" style="display: none;">
+    <input type="hidden" id="edit-note-id" name="id">
+    <input type="text" id="edit-note-name" name="name" placeholder="Nazwa kolumny">
+    <input type="number" id="edit-note-position" name="position" placeholder="Pozycja kolumny">
+    <button type="button" onclick="editNote()">Zapisz zmiany</button>
+    <button type="button" id="cancel-note-edit">Anuluj</button>
 </form>
 
 
@@ -78,12 +76,53 @@
             return cookieValue;
         }
 
-        function addNote(id, name){
+    function editNote(note) {
+        
+    }
+
+    function addNote(coluId, note){
+            name = note.name
+            if(name==null){
+                var name = document.getElementById('name-'+coluId).value; // gdy pobiera nazwe z bazy to jest pomijane
+            }
+            //var name = document.getElementById('name-'+coluId).value; // zobacz
+            //var id = form.querySelector('column').value;
             var noteDiv = document.createElement("div");
             noteDiv.classList.add("note");
             noteDiv.textContent = name;
-            console.log(name);
-            document.getElementById("column-"+id).appendChild(noteDiv);
+            var button = document.createElement("button");
+            button.textContent = "X";
+            noteDiv.appendChild(button);
+            noteDiv.id = "note-" + note.id;
+            button.onclick = function () { editNote(note);};
+            document.getElementById("column-"+coluId).appendChild(noteDiv);
+            var columnId = parseInt(coluId)
+            console.log(columnId);
+
+        }
+
+        function createNote(coluId, name) {
+            console.log(coluId)
+            if(name==null){
+                var name = document.getElementById('name-'+coluId).value; // gdy pobiera nazwe z bazy to jest pomijane
+            }
+
+            var noteDiv = document.createElement("div");
+            noteDiv.classList.add("note");
+            noteDiv.textContent = name;
+            document.getElementById("column-"+coluId).appendChild(noteDiv);
+            //var columnId = parseInt(coluId)
+
+            //const name = document.getElementById('name').value;
+            const json = JSON.stringify({id: coluId, name: name});
+            const csrftoken = getCookie('csrftoken');
+            fetch('/api/notes/', {method: 'POST', headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+            }, body: json})
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error(error));
         }
 
         function deleteNote(id) {
@@ -124,7 +163,7 @@
                 .then(response => response.json())
                 .catch(error => console.error(error));
             data.forEach(function(note) {
-                addNote(id,note.name);
+                addNote(id,note);
             })
         }
 
@@ -180,9 +219,14 @@
         document.getElementById('edit-column-form').elements.max.value = columnMax;
     }
 
-    function cancelEdit() {
+    function cancelColumnEdit() {
         document.getElementById('edit-column-form').style.display = 'none';
         document.getElementById('add-column-form').style.display = 'block';
+    }
+
+    function cancelNoteEdit() {
+        document.getElementById('edit-note-form').style.display = 'none';
+        document.getElementById('add-note-form').style.display = 'block';
     }
 </script>
 
