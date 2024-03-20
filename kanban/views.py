@@ -18,7 +18,6 @@ class ColumnAPIView(APIView):
             if highest:
                 position = highest.position + 1
             else:
-
                 position = 1
         elif position > highest.position:
             position = highest.position + 1
@@ -30,8 +29,13 @@ class ColumnAPIView(APIView):
                     column.position += 1
                     column.save()
 
+        name = request.data.get('name', '')
+
+        if request.data['name'] == '':
+            name = "Kolumna " + str((Column.objects.order_by("-id").first().id+1) if Column.objects.exists() else 1)
+
         column_data = {
-            'name': request.data.get('name', ''),
+            'name': name,
             'position': position,
             'max': request.data.get('max', None)
         }
@@ -53,6 +57,11 @@ class ColumnAPIView(APIView):
         try:
             column_id = request.data['id']
             column = Column.objects.get(id=column_id)
+            position = column.position
+            columns_to_update = Column.objects.filter(position__gte=position)
+            for col in columns_to_update:
+                col.position -= 1
+                col.save()
             column.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Column.DoesNotExist:
@@ -74,10 +83,19 @@ class ColumnAPIView(APIView):
 
                 column.position = new_position
 
-            if 'name' in request.data:
-                column.name = request.data['name']
+            name = request.data.get('name', '')
+
+            if request.data['name'] == '':
+                name = "Kolumna " + str(
+                    (Column.objects.order_by("-id").first().id + 1) if Column.objects.exists() else 1)
             if 'max' in request.data:
-                column.max = request.data['max']
+                if request.data['max'] == None:
+                    column.max = None
+                elif request.data['max'] >= Note.objects.filter(column=column_id).count():
+                    column.max = request.data['max']
+                else:
+                    column.max = Note.objects.filter(column=column_id).count()
+            column.name = name
             column.save()
             return Response(ColumnSerializer(column).data, status=status.HTTP_200_OK)
         except Column.DoesNotExist:
@@ -127,22 +145,28 @@ class NoteAPIView(APIView):
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request):
+        id = request.data['id']
         if not request.data['id']:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
         column = Column.objects.get(id=id)
+        print(Note.objects.filter(id=id).count())
+        print(column.max)
+        if column.max is not None:
+            if Note.objects.filter(column=id).count() >= column.max:
+                return Response({"error": "Trying to add too many elements"}, status=status.HTTP_400_BAD_REQUEST)
         if column is None:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        name = request.data['name'] or ""
-        position = request.data['position']
-        if position is not None:
+        name = request.data.get('name', 'notatka ' + str((Note.objects.order_by("-id").first().id+1) if Note.objects.exists() else 1))
+        position = 0
+        if "position" in request.data is None:
+            position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+        else:
             with transaction.atomic():
                 columns_to_update = Column.objects.filter(position__gte=position)
                 columns_to_update = columns_to_update.order_by('-position')
-                for column in columns_to_update:
-                    column.position += 1
-                    column.save()
-        else:
-            position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+                for col in columns_to_update:
+                    col.position += 1
+                    col.save()
         note = Note.objects.create(name=name, column=column, position=position)
         note.save()
         serializer = NoteSerializer(note)
@@ -152,22 +176,22 @@ class NoteAPIView(APIView):
     def put(self, request):
         if not request.data['id']:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        note = Note.objects.get(id=id)
+        note = Note.objects.get(id=request.data['id'])
         if note is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
         if request.data['name']:
             note.name = request.data["name"]
         new_position = request.data['position']
-        if new_position is not None and new_position != note.position:
-            notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
-                                                      position__lte=max(new_position, note.position)).exclude(
-                id=note.id)
-            if new_position > note.position:
-                notes_to_update.update(position=models.F('position') - 1)
-            else:
-                notes_to_update.update(position=models.F('position') + 1)
+        # if new_position is not None and new_position != note.position:
+        #     notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
+        #                                               position__lte=max(new_position, note.position)).exclude(
+        #         id=note.id)
+        #     if new_position > note.position:
+        #         notes_to_update.update(position=models.F('position') - 1)
+        #     else:
+        #         notes_to_update.update(position=models.F('position') + 1)
 
-            note.position = new_position
+        note.position = new_position
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -175,7 +199,7 @@ class NoteAPIView(APIView):
     def delete(self, request):
         if not request.data['id']:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        note = Note.objects.get(id=id)
+        note = Note.objects.get(id=request.data['id'])
         if note is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
         note.delete()

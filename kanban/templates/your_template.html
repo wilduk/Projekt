@@ -9,21 +9,7 @@
 </head>
 <body>
 
-<div class="columns-container">
-    {% for column in data %}
-        <div class="column">
-            <h2>{{ column.name }}</h2>
-            <p>Max: {{ column.max }}</p>
-            <script>
-                document.addEventListener("DOMContentLoaded", function() {
-                    getNotes({{ column.id }});
-                });
-            </script>
-            <div id="column-{{ column.id }}"></div>
-            <!-- Dodano przycisk do edycji kolumny -->
-            <button onclick="editColumn('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj kolumnę</button>
-        </div>
-    {% endfor %}
+<div class="columns-container" id="columns-container">
 </div>
 
 <!-- Formularz dodawania kolumny -->
@@ -40,24 +26,16 @@
     <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
     <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
     <button type="button" onclick="saveColumnChanges()">Zapisz zmiany</button>
-    <button type="button" id="cancel-edit">Anuluj</button>
-</form>
-
-<!-- Formularz notatki kolumny -->
-<form id="add-note-form">
-    <input type="text" id="name" name="name" placeholder="Treść notatki">
-    <input type="number" id="column" name="column" placeholder="Kolumna">
-    <button type="button" onclick="addNote()">Dodaj notatke</button>
+    <button type="button" onclick="cancelColumnEdit()" id="cancel-column-edit">Anuluj</button>
 </form>
 
 <!-- Formularz edycji notatki -->
-<form id="edit-column-form" style="display: none;">
-    <input type="hidden" id="edit-column-id" name="id">
-    <input type="text" id="edit-column-name" name="name" placeholder="Nazwa kolumny">
-    <input type="number" id="edit-column-max" name="max" placeholder="Maksymalna ilość">
-    <input type="number" id="edit-column-position" name="position" placeholder="Pozycja kolumny">
-    <button type="button" onclick="editColumn()">Zapisz zmiany</button>
-    <button type="button" id="cancel-edit">Anuluj</button>
+<form id="edit-note-form" style="display: none;">
+    <input type="hidden" id="edit-note-id" name="id">
+    <input type="text" id="edit-note-name" name="name" placeholder="Nazwa kolumny">
+    <input type="number" id="edit-note-position" name="position" placeholder="Pozycja kolumny">
+    <button type="button" onclick="editNote()">Zapisz zmiany</button>
+    <button type="button" id="cancel-note-edit">Anuluj</button>
 </form>
 
 
@@ -78,40 +56,98 @@
             return cookieValue;
         }
 
-        function addNote(id, name){
+    function editNote(note) {
+        var noteDiv = document.getElementById("note-"+note.id);
+        var textbox = document.createElement("input");
+        textbox.type = "text";
+        textbox.textContent = note.name;
+        textbox.id = "note-"+note.id+"-textbox";
+        noteDiv.textContent = "";
+        noteDiv.appendChild(textbox);
+        giveNoteButton(note, "✅", acceptNoteChanges);
+        giveNoteButton(note, "❌", cancelNoteChanges);
+    }
+
+    function giveNoteButton(note, name, func){
+        var noteDiv = document.getElementById("note-"+note.id);
+        var button = document.createElement("button");
+        button.textContent = name;
+        button.onclick = function () { func(note);};
+        button.tagName = "note-"+note.id+"-button";
+        noteDiv.appendChild(button)
+    }
+
+    function addNote(coluId, note){
+            name = note.name
+            if(name==null){
+                var name = document.getElementById('name-'+coluId).value; // gdy pobiera nazwe z bazy to jest pomijane
+            }
+            //var name = document.getElementById('name-'+coluId).value; // zobacz
+            //var id = form.querySelector('column').value;
             var noteDiv = document.createElement("div");
             noteDiv.classList.add("note");
             noteDiv.textContent = name;
-            console.log(name);
-            document.getElementById("column-"+id).appendChild(noteDiv);
+            noteDiv.id = "note-" + note.id;
+            document.getElementById("column-"+coluId).appendChild(noteDiv);
+            giveNoteButton(note, "E", editNote);
+            giveNoteButton(note, "🗑", deleteNote);
+            var columnId = parseInt(coluId)
+            console.log(columnId);
+
         }
 
-        function deleteNote(id) {
-        const json = JSON.stringify({id: id});
+        function createNote(coluId, name) {
+
+            //const name = document.getElementById('name').value;
+            const json = JSON.stringify({id: coluId, name: name});
+            const csrftoken = getCookie('csrftoken');
+            fetch('/api/notes/', {method: 'POST', headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+            }, body: json})
+                .then(response => response.json())
+                .then(data => {
+                    if(!data['error']){
+                        addNote(coluId,data);
+                    }
+                })
+                .catch(error => console.error(error));
+        }
+
+        function deleteNote(note) {
+        var noteDiv = document.getElementById("note-"+note.id);
+        var colDiv = document.getElementById("column-"+note.column);
+        colDiv.removeChild(noteDiv)
+        const json = JSON.stringify({id: note.id});
         const csrftoken = getCookie('csrftoken');
         fetch('/api/notes/', {method: 'DELETE', headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
-        }, body: json})
-            .then(response => response.json())
-            .then(data => console.log(data))
-            .catch(error => console.error(error));
+        }, body: json});
     }
 
-    function saveNoteChanges() {
-        const id = document.getElementById('id').value;
-        const name = document.getElementById('name').value;
-        const max = parseInt(document.getElementById('max').value);
-        const position = parseInt(document.getElementById('position').value);
-        const json = JSON.stringify({id: id, name: name, max: max, position: position});
+    function acceptNoteChanges(note) {
+        var noteDiv = document.getElementById("note-"+note.id);
+        var noteText = document.getElementById("note-"+note.id+"-textbox");
+        const json = JSON.stringify({id: note.id, name: noteText.value, position: note.position});
+        noteDiv.textContent = "updating...";
         const csrftoken = getCookie('csrftoken');
-        fetch('/api/columns/', {method: 'PUT', headers: {
+        fetch('/api/notes/', {method: 'PUT', headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
         }, body: json})
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => noteDiv.textContent = data.name)
+            .then(idk => giveNoteButton(note,"E",editNote))
+            .then(idk => giveNoteButton(note, "🗑", deleteNote))
             .catch(error => console.error(error));
+    }
+
+    function cancelNoteChanges(note){
+        var noteDiv = document.getElementById("note-"+note.id);
+        noteDiv.textContent = note.name;
+        giveNoteButton(note,"E",editNote);
+        giveNoteButton(note, "🗑", deleteNote);
     }
 
 
@@ -123,12 +159,53 @@
             }})
                 .then(response => response.json())
                 .catch(error => console.error(error));
-            data.forEach(function(note) {
-                addNote(id,note.name);
+                data.forEach(function(note) {
+                addNote(id,note);
             })
         }
 
-        // Funkcja do dodawania nowej kolumny
+    function deleteColumn(column) {
+        var columnsList = document.getElementById("columns-container");
+        var columnDiv = document.getElementById("column-"+column+"-container");
+        columnsList.removeChild(columnDiv);
+        const json = JSON.stringify({id: column});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {method: 'DELETE', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json});
+    }
+
+    function addColumnDiv(coluId, name, max, position) {
+
+        var maxstr = ""
+        if(max != "None" && max != null){
+            maxstr = "Max: "+ max
+        }
+        var container = document.getElementById("columns-container");
+        var coluDiv = document.createElement("div");
+        coluDiv.classList.add("column");
+        coluDiv.id = "column-"+coluId+'-container';
+        coluDiv.innerHTML = ' \
+            <h2 id = "name-'+coluId+'">'+name+'</h2> \
+            <p id = "max-'+coluId+'">'+maxstr+'</p> \
+            <div id="column-'+coluId+'"></div> \
+            <button onclick="editColumn(\''+coluId+'\', \''+name+'\', \''+max+'\')">Edytuj kolumnę</button> \
+            <button onclick="deleteColumn(\''+coluId+'\')">Usuń kolumnę</button> \
+            <form id="add-note-form"> \
+                <input type="text" id="name-'+coluId+'" name="name" placeholder="Treść notatki"> \
+                <!--<input type="number" id="column" name="column" placeholder="Kolumna">--> \
+                <button type="button" onclick="createNote('+coluId+')">Dodaj notatke</button> \
+            </form>\
+            ';
+        container.insertBefore(coluDiv, container.childNodes[position]);
+        console.log(position-1);
+        console.log(container.childNodes[position-1]);
+        document.addEventListener("DOMContentLoaded", function() { getNotes(coluId);
+        })
+    }
+
+            // Funkcja do dodawania nowej kolumny
     function addColumn() {
         const name = document.getElementById('name').value;
         const max = parseInt(document.getElementById('max').value);
@@ -140,35 +217,38 @@
                 'X-CSRFToken': csrftoken
         }, body: json})
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => addColumnDiv(data.id, data.name, data.max, data.position))
             .catch(error => console.error(error));
     }
 
-    function deleteColumn(id) {
-        const json = JSON.stringify({id: id});
-        const csrftoken = getCookie('csrftoken');
-        fetch('/api/columns/', {method: 'DELETE', headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-        }, body: json})
-            .then(response => response.json())
-            .then(data => console.log(data))
-            .catch(error => console.error(error));
+    function updateColumn(column){
+        console.log(column);
+        var columnName = document.getElementById("name-"+column.id);
+        columnName.textContent = column.name;
+        var columnMax = document.getElementById("max-"+column.id);
+        var max = column.max;
+        print(max)
+        if(max == null){
+            columnMax.textContent = "";
+        }
+        else{
+            columnMax.textContent = "Max: "+column.max;
+        }
     }
 
     function saveColumnChanges() {
         const id = document.getElementById('edit-column-id').value;
         const name = document.getElementById('edit-column-name').value;
         const max = parseInt(document.getElementById('edit-column-max').value);
-        const position = parseInt(document.getElementById('edit-column-position').value);
-        const json = JSON.stringify({id: id, name: name, max: max, position: position});
+        //const position = parseInt(document.getElementById('edit-column-position').value);
+        const json = JSON.stringify({id: id, name: name, max: max});
         const csrftoken = getCookie('csrftoken');
         fetch('/api/columns/', {method: 'PUT', headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
         }, body: json})
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => updateColumn(data))
             .catch(error => console.error(error));
     }
 
@@ -180,10 +260,13 @@
         document.getElementById('edit-column-form').elements.max.value = columnMax;
     }
 
-    function cancelEdit() {
+    function cancelColumnEdit() {
         document.getElementById('edit-column-form').style.display = 'none';
         document.getElementById('add-column-form').style.display = 'block';
     }
+
+    {% for column in data %}addColumnDiv("{{ column.id }}", "{{ column.name }}", "{{ column.max }}");  {% endfor %}
+
 </script>
 
 </body>
