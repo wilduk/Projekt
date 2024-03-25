@@ -31,9 +31,9 @@ class ColumnAPIView(APIView):
                     column.position += 1
                     column.save()
 
-        name = request.data.get('name', '')
+        name = request.data.get('name', None)
 
-        if request.data['name'] == '':
+        if name is None:
             name = "Kolumna " + str((Column.objects.order_by("-id").first().id+1) if Column.objects.exists() else 1)
 
         column_data = {
