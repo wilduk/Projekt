@@ -19,6 +19,8 @@ class ColumnAPIView(APIView):
                 position = highest.position + 1
             else:
                 position = 1
+        if highest is None:
+            position = 1
         elif position > highest.position:
             position = highest.position + 1
         else:
