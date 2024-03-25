@@ -187,17 +187,17 @@ class NoteAPIView(APIView):
             if Column.objects.filter(position=request.data['column']+columnsMin).exists():
                 print(Column.objects.get(position=request.data['column']+columnsMin))
                 note.column = Column.objects.get(position=request.data['column']+columnsMin)
-        # new_position = request.data['position']
-        # if new_position is not None and new_position != note.position:
-        #     notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
-        #                                               position__lte=max(new_position, note.position)).exclude(
-        #         id=note.id)
-        #     if new_position > note.position:
-        #         notes_to_update.update(position=models.F('position') - 1)
-        #     else:
-        #         notes_to_update.update(position=models.F('position') + 1)
+        new_position = request.data.get('position', None)
+        if new_position is not None and new_position != note.position:
+            notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
+                                                      position__lte=max(new_position, note.position)).exclude(
+                id=note.id)
+            if new_position > note.position:
+                notes_to_update.update(position=models.F('position') - 1)
+            else:
+                notes_to_update.update(position=models.F('position') + 1)
 
-        # note.position = new_position
+        note.position = new_position
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
