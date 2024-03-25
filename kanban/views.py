@@ -174,14 +174,20 @@ class NoteAPIView(APIView):
 
 
     def put(self, request):
-        if not request.data['id']:
+        if request.data.get('id', None) is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
         note = Note.objects.get(id=request.data['id'])
         if note is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        if request.data['name']:
+        if request.data.get('name', None) is not None:
             note.name = request.data["name"]
-        new_position = request.data['position']
+        if request.data.get('column', None) is not None:
+            columnsMin = Column.objects.order_by("position").first().position-1
+            print(Column.objects.filter(position=request.data['column']+columnsMin).exists())
+            if Column.objects.filter(position=request.data['column']+columnsMin).exists():
+                print(Column.objects.get(position=request.data['column']+columnsMin))
+                note.column = Column.objects.get(position=request.data['column']+columnsMin)
+        # new_position = request.data['position']
         # if new_position is not None and new_position != note.position:
         #     notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
         #                                               position__lte=max(new_position, note.position)).exclude(
@@ -191,7 +197,7 @@ class NoteAPIView(APIView):
         #     else:
         #         notes_to_update.update(position=models.F('position') + 1)
 
-        note.position = new_position
+        # note.position = new_position
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)

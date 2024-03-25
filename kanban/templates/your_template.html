@@ -40,6 +40,20 @@
 
 
 <script>
+
+    function getChildPosition(childId) {
+        var parent = document.getElementById('columns-container');
+        var children = parent.children;
+
+        for (var i = 0; i < children.length; i++) {
+            if (children[i].id === childId) {
+                return i; // Return the index of the child
+            }
+        }
+
+        return -1; // Return -1 if child not found
+    }
+
     function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -77,6 +91,52 @@
         noteDiv.appendChild(button)
     }
 
+    function moveNote(note,pos){
+
+        var noteDiv = document.getElementById("note-"+note.id);
+
+        var parent = document.getElementById('columns-container');
+        var children = parent.children;
+
+        if(children.length >= pos && pos >= 0){
+            console.log("heheszki");
+            var container = children[pos-1];
+            var div = document.querySelector("div#"+container.id+" > div");
+            div.appendChild(noteDiv);
+        }
+        const json = JSON.stringify({id: note.id, column: pos});
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/notes/', {method: 'PUT', headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+        }, body: json})
+            .then(response => response.json())
+            .catch(error => console.error(error));
+    }
+
+    function movePrev(note){
+        var div = document.getElementById('column-'+note.column+'-container');
+        var num = getChildPosition(div.id);
+        console.log(num);
+        note.column = note.column-1;
+        moveNote(note,num);
+    }
+
+    function moveNext(note){
+        var div = document.getElementById('column-'+note.column+'-container');
+        var num = getChildPosition(div.id)+2;
+        console.log(num);
+        note.column = note.column+1;
+        moveNote(note,num);
+    }
+
+    function giveDefaultButtons(note){
+        giveNoteButton(note, "E", editNote);
+        giveNoteButton(note, "🗑", deleteNote);
+        giveNoteButton(note, "<", movePrev);
+        giveNoteButton(note, ">", moveNext);
+    }
+
     function addNote(coluId, note){
             name = note.name
             if(name==null){
@@ -89,10 +149,8 @@
             noteDiv.textContent = name;
             noteDiv.id = "note-" + note.id;
             document.getElementById("column-"+coluId).appendChild(noteDiv);
-            giveNoteButton(note, "E", editNote);
-            giveNoteButton(note, "🗑", deleteNote);
+            giveDefaultButtons(note);
             var columnId = parseInt(coluId)
-            console.log(columnId);
 
         }
 
@@ -138,16 +196,14 @@
         }, body: json})
             .then(response => response.json())
             .then(data => noteDiv.textContent = data.name)
-            .then(idk => giveNoteButton(note,"E",editNote))
-            .then(idk => giveNoteButton(note, "🗑", deleteNote))
+            .then(idk => giveDefaultButtons(data))
             .catch(error => console.error(error));
     }
 
     function cancelNoteChanges(note){
         var noteDiv = document.getElementById("note-"+note.id);
         noteDiv.textContent = note.name;
-        giveNoteButton(note,"E",editNote);
-        giveNoteButton(note, "🗑", deleteNote);
+        giveDefaultButtons(note);
     }
 
 
@@ -187,7 +243,7 @@
         coluDiv.classList.add("column");
         coluDiv.id = "column-"+coluId+'-container';
         coluDiv.innerHTML = ' \
-            <h2 id = "name-'+coluId+'">'+name+'</h2> \
+            <h2 id = "title-'+coluId+'">'+name+'</h2> \
             <p id = "max-'+coluId+'">'+maxstr+'</p> \
             <div id="column-'+coluId+'"></div> \
             <button onclick="editColumn(\''+coluId+'\', \''+name+'\', \''+max+'\')">Edytuj kolumnę</button> \
@@ -199,8 +255,6 @@
             </form>\
             ';
         container.insertBefore(coluDiv, container.childNodes[position]);
-        console.log(position-1);
-        console.log(container.childNodes[position-1]);
         document.addEventListener("DOMContentLoaded", function() { getNotes(coluId);
         })
     }
@@ -222,12 +276,10 @@
     }
 
     function updateColumn(column){
-        console.log(column);
-        var columnName = document.getElementById("name-"+column.id);
+        var columnName = document.getElementById("title-"+column.id);
         columnName.textContent = column.name;
         var columnMax = document.getElementById("max-"+column.id);
         var max = column.max;
-        print(max)
         if(max == null){
             columnMax.textContent = "";
         }
