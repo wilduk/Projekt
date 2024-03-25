@@ -164,11 +164,11 @@ class NoteAPIView(APIView):
             position = Note.objects.filter(column=id).order_by('-position').first().position + 1
         else:
             with transaction.atomic():
-                columns_to_update = Column.objects.filter(position__gte=position)
-                columns_to_update = columns_to_update.order_by('-position')
-                for col in columns_to_update:
-                    col.position += 1
-                    col.save()
+                notes_to_update = Note.objects.filter(column=column,position__gte=position)
+                notes_to_update = notes_to_update.order_by('-position')
+                for note in notes_to_update:
+                    note.position += 1
+                    note.save()
         note = Note.objects.create(name=name, column=column, position=position)
         note.save()
         serializer = NoteSerializer(note)
@@ -176,30 +176,55 @@ class NoteAPIView(APIView):
 
 
     def put(self, request):
-        if request.data.get('id', None) is None:
+        id = request.data.get('id', None)
+        name = request.data.get('name', None)
+        column = request.data.get('column', None)
+        new_pos = request.data.get('position', None)
+
+        if id is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
         note = Note.objects.get(id=request.data['id'])
+
         if note is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        if request.data.get('name', None) is not None:
+
+        if name is not None:
             note.name = request.data["name"]
-        if request.data.get('column', None) is not None:
+
+        if column is not None:
             columnsMin = Column.objects.order_by("position").first().position-1
             print(Column.objects.filter(position=request.data['column']+columnsMin).exists())
             if Column.objects.filter(position=request.data['column']+columnsMin).exists():
                 print(Column.objects.get(position=request.data['column']+columnsMin))
                 note.column = Column.objects.get(position=request.data['column']+columnsMin)
-        new_position = request.data.get('position', None)
-        if new_position is not None and new_position != note.position:
-            notes_to_update = Column.objects.filter(position__gte=min(new_position, note.position),
-                                                      position__lte=max(new_position, note.position)).exclude(
+
+            notes_to_update = Note.objects.filter(column=note.column, position__gte=note.position)
+            notes_to_update.update(position=models.F('position') - 1)
+            if new_pos is not None:
+                notes_to_update = Note.objects.filter(column=column, position__gte=new_pos)
+                notes_to_update.update(position=models.F('position') + 1)
+            else:
+                if Note.objects.filter(column=column).exists():
+                    new_pos = Note.objects.filter(column=column).order_by("-position").first().position + 1
+                else:
+                    new_pos = 1
+        elif new_pos is not None and new_pos != note.position:
+            notes_to_update = Note.objects.filter(column=note.column,
+                                                  position__gte=min(new_pos, note.position),
+                                                  position__lte=max(new_pos, note.position)).exclude(
                 id=note.id)
-            if new_position > note.position:
+            if new_pos > note.position:
                 notes_to_update.update(position=models.F('position') - 1)
             else:
                 notes_to_update.update(position=models.F('position') + 1)
+        else:
+            if Note.objects.filter(column=note.column).exists():
+                new_pos = Note.objects.filter(column=note.column).order_by("-position").first().position + 1
+            else:
+                new_pos = 1
 
-        note.position = new_position
+        note.position = new_pos
         note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
