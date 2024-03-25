@@ -22,7 +22,7 @@
               <!-- Existing tasks -->
                 {% for note in notes %}
                 	{% if note.column == column.id %}
-                		<p class="task" draggable="true">{{ note.name }}</p>
+                		<p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>
                 	{% endif %}
                 {% endfor %}
             </div>
@@ -52,6 +52,7 @@
             }
             return cookieValue;
         }
+
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -112,24 +113,64 @@
       draggables.forEach((task) => {
         task.addEventListener("dragstart", () => {
           task.classList.add("is-dragging");
+          task.dataset.zoneid = task.closest(".swim-lane").getAttribute("id");
         });
-        task.addEventListener("dragend", () => {
-          task.classList.remove("is-dragging");
+        task.addEventListener("dragend", async () => {
+            task.classList.remove("is-dragging");
+            const zoneId = task.dataset.zoneid; // Pobierz identyfikator strefy
+            const zone = document.getElementById(zoneId);
+            var pos = null;
+
+
+                var i = 1;
+                for(const element of zone.children)
+                {
+                    if (element == task) {
+                        pos = i;
+                    }
+                    i += 1;
+                }
+
+
+            var json;
+            if (pos) {
+                json = JSON.stringify({
+                    id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
+                    column: parseInt(zone.dataset.colid)
+                })
+            } else {
+                json = JSON.stringify({
+                    id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
+                    column: parseInt(zone.dataset.colid),
+                    position: pos
+                })
+            }
+
+            const csrftoken = getCookie('csrftoken');
+            const response = await fetch("/api/notes/", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    'X-CSRFToken': csrftoken
+                },
+                body: json
+            });
         });
       });
 
       droppables.forEach((zone) => {
-        zone.addEventListener("dragover", (e) => {
-          e.preventDefault();
+        zone.addEventListener("dragover", async (e) => {
+            e.preventDefault();
 
-          const bottomTask = insertAboveTask(zone, e.clientY);
-          const curTask = document.querySelector(".is-dragging");
+            const bottomTask = insertAboveTask(zone, e.clientY);
+            const curTask = document.querySelector(".is-dragging");
 
-          if (!bottomTask) {
-            zone.appendChild(curTask);
-          } else {
-            zone.insertBefore(curTask, bottomTask);
-          }
+            if (!bottomTask) {
+                zone.appendChild(curTask);
+            } else {
+                zone.insertBefore(curTask, bottomTask);
+            }
+
         });
       });
 

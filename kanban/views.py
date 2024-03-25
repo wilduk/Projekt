@@ -175,11 +175,13 @@ class NoteAPIView(APIView):
             note.name = request.data["name"]
 
         if column is not None:
-            columnsMin = Column.objects.order_by("position").first().position-1
-            print(Column.objects.filter(position=request.data['column']+columnsMin).exists())
-            if Column.objects.filter(position=request.data['column']+columnsMin).exists():
-                print(Column.objects.get(position=request.data['column']+columnsMin))
-                note.column = Column.objects.get(position=request.data['column']+columnsMin)
+            columnsMin = Column.objects.order_by("position").first().position
+            column = column + columnsMin - 1
+            print(request.data["column"]+columnsMin-1)
+            print(Column.objects.filter(position=request.data['column']+columnsMin-1).first().name)
+            if Column.objects.filter(position=request.data['column']+columnsMin-1).exists():
+                print(Column.objects.get(position=request.data['column']+columnsMin-1))
+                note.column = Column.objects.get(position=request.data['column']+columnsMin-1)
 
             notes_to_update = Note.objects.filter(column=note.column, position__gte=note.position)
             notes_to_update.update(position=models.F('position') - 1)
