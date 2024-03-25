@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drag & Drop API</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'styles.css' %}">
+  </head>
+  <body>
+    <div class="board">
+      <form id="todo-form">
+        <input type="text" placeholder="New TODO..." id="todo-input" />
+        <button type="submit">Add +</button>
+      </form>
+
+      <div class="lanes", id="lanes">
+          {% for column in columns %}
+            <div class="swim-lane" id="{{ column.name }}-lane" data-colid="{{ column.id }}">
+              <h3 class="heading">{{ column.name }}</h3>
+              <!-- Existing tasks -->
+                {% for note in notes %}
+                	{% if note.column == column.id %}
+                		<p class="task" draggable="true">{{ note.name }}</p>
+                	{% endif %}
+                {% endfor %}
+            </div>
+          {% endfor %}
+
+        <!-- Other swim-lanes -->
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("todo-form");
+      const input = document.getElementById("todo-input");
+      const todoLane = document.getElementById("lanes").children[0];
+
+      function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const value = input.value;
+
+        if (!value) return;
+
+        try {
+          // Send POST request to create a new task
+            console.log(todoLane.colid);
+          const csrftoken = getCookie('csrftoken');
+          const response = await fetch("/api/notes/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+              id: parseInt(todoLane.dataset.colid), // Assuming 'todo-lane' is the ID of the column
+              name: value
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to add task");
+          }
+
+          // Assuming the response returns the added task data
+          const taskData = await response.json();
+
+          // Create new task element
+          const newTask = document.createElement("p");
+          newTask.classList.add("task");
+          newTask.setAttribute("draggable", "true");
+          newTask.innerText = taskData.name;
+
+          newTask.addEventListener("dragstart", () => {
+            newTask.classList.add("is-dragging");
+          });
+
+          newTask.addEventListener("dragend", () => {
+            newTask.classList.remove("is-dragging");
+          });
+
+          // Append the new task to the todo lane
+          todoLane.appendChild(newTask);
+
+          // Clear input field
+          input.value = "";
+        } catch (error) {
+          console.error("Error:", error.message);
+        }
+      });
+
+      const draggables = document.querySelectorAll(".task");
+      const droppables = document.querySelectorAll(".swim-lane");
+
+      draggables.forEach((task) => {
+        task.addEventListener("dragstart", () => {
+          task.classList.add("is-dragging");
+        });
+        task.addEventListener("dragend", () => {
+          task.classList.remove("is-dragging");
+        });
+      });
+
+      droppables.forEach((zone) => {
+        zone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+
+          const bottomTask = insertAboveTask(zone, e.clientY);
+          const curTask = document.querySelector(".is-dragging");
+
+          if (!bottomTask) {
+            zone.appendChild(curTask);
+          } else {
+            zone.insertBefore(curTask, bottomTask);
+          }
+        });
+      });
+
+      const insertAboveTask = (zone, mouseY) => {
+        const els = zone.querySelectorAll(".task:not(.is-dragging)");
+
+        let closestTask = null;
+        let closestOffset = Number.NEGATIVE_INFINITY;
+
+        els.forEach((task) => {
+          const { top } = task.getBoundingClientRect();
+
+          const offset = mouseY - top;
+
+          if (offset < 0 && offset > closestOffset) {
+            closestOffset = offset;
+            closestTask = task;
+          }
+        });
+
+        return closestTask;
+      };
+    </script>
+  </body>
+</html>

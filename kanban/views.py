@@ -113,7 +113,7 @@ class ColumnHTMLView(View):
         notes = Note.objects
         serializer = NoteSerializer(notes, many=True).data
 
-        return render(request, 'your_template.html', {'columns': data, 'notes': serializer})
+        return render(request, 'strona.html', {'columns': data, 'notes': serializer})
 
 
 class NoteAPIView(APIView):
