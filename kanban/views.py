@@ -34,7 +34,7 @@ class ColumnAPIView(APIView):
         name = request.data.get('name', None)
 
         if name is None:
-            name = ""
+            name = "Kolumna "+str(Column.objects.all().count()+1)
 
         column_data = {
             'name': name,

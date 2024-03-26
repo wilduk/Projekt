@@ -12,20 +12,20 @@
 <div class="board">
     <div class="lanes" id="lanes">
         {% for column in columns %}
-            <div class="swim-lane" id="{{ column.name }}-lane" data-colid="{{ column.id }}">
+            <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}">
                 <h3 class="heading">{{ column.name }}</h3>
                 <div class="przyciski">
                     <button type="submit" name="edit" class="edit">Edytuj</button>
-                    <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.name }}')">Usuń</button>
+                    <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń</button>
                 </div>
                 <!-- Existing tasks -->
                 {% for note in notes %}
                     {% if note.column == column.id %}
-                        <div class="task" draggable="true" id="{{ note.name }}-note" data-noteid="{{ note.id }}">{{ note.name }}<button class="usuwanie" onclick="usunTaska('{{ note.name }}-note')">🗑</button></div>
+                        <div class="task" draggable="true" id="{{ note.id }}-note" data-noteid="{{ note.id }}">{{ note.name }}<button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button></div>
                     {% endif %}
                 {% endfor %}
-                <form id="{{ column.name }}-form" class="note-form">
-                    <input type="text" placeholder="Nowe zadanie..." id="{{ column.name }}-input"/>
+                <form id="{{ column.id }}-form" class="note-form">
+                    <input type="text" placeholder="Nowe zadanie..." id="{{ column.id }}-input"/>
                     <button type="submit">Dodaj</button>
                 </form>
             </div>
@@ -241,7 +241,7 @@
         const dodaj = document.getElementById('add');
         const kolumna = document.createElement('div');
         kolumna.classList.add("swim-lane");
-        kolumna.id = kol.name+"-lane";
+        kolumna.id = kol.id+"-lane";
         kolumna.dataset.colid = kol.id;
         const nazwa = document.createElement('h3');
         nazwa.classList.add("heading")
@@ -258,14 +258,14 @@
         usun.name = "delete";
         usun.classList.add('delete');
         usun.innerText = "Usuń";
-        usun.onclick = function() {usunKolumne(kol.name)};
+        usun.onclick = function() {usunKolumne(kol.id)};
         const form = document.createElement('form');
-        form.id = kol.name+'-form';
+        form.id = kol.id+'-form';
         form.classList.add('note-form');
         const input = document.createElement('input');
         input.type = 'text';
         input.placeholder = 'Nowe zadanie...';
-        input.id = kol.name+'-input';
+        input.id = kol.id+'-input';
         const submit = document.createElement('button');
         submit.type = 'submit';
         submit.innerText = "Dodaj";
@@ -280,23 +280,6 @@
         kolumna.appendChild(form);
         lista.insertBefore(kolumna,dodaj);
     }
-    {#<div class="swim-lane" id="{{ column.name }}-lane" data-colid="{{ column.id }}">#}
-    {#            <h3 class="heading">{{ column.name }}</h3>#}
-    {#            <div class="przyciski">#}
-    {#                <button type="submit" name="edit" class="edit">Edytuj</button>#}
-    {#                <button type="submit" name="delete" class="delete">Usuń</button>#}
-    {#            </div>#}
-    {#            <!-- Existing tasks -->#}
-    {#            {% for note in notes %}#}
-    {#                {% if note.column == column.id %}#}
-    {#                    <p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>#}
-    {#                {% endif %}#}
-    {#            {% endfor %}#}
-    {#            <form id="{{ column.name }}-form" class="note-form">#}
-    {#                <input type="text" placeholder="Nowe zadanie..." id="{{ column.name }}-input"/>#}
-    {#                <button type="submit">Dodaj</button>#}
-    {#            </form>#}
-    {#        </div>#}
 
     async function dodajKolumne() {
         const csrftoken = getCookie('csrftoken');
@@ -313,9 +296,8 @@
             });
     }
 
-    function usunKolumne(nazwa) {
-        const kolumna = document.getElementById(nazwa+'-lane');
-        const id = kolumna.dataset.colid;
+    function usunKolumne(id) {
+        const kolumna = document.getElementById(id+'-lane');
         const csrftoken = getCookie('csrftoken');
         fetch("/api/columns/", {
             method: "Delete",
