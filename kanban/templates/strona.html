@@ -16,13 +16,13 @@
                 <div class="heading"><div class="nazwa"><h4>{{ column.name }}</h4></div><div class="licznik" data-max="{{ column.max }}">liczenie</div></div>
 
                 <div class="przyciski">
-                    <button type="submit" name="edit" class="edit">Edytuj</button>
+                    <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj</button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń</button>
                 </div>
                 <!-- Existing tasks -->
                 {% for note in notes %}
                     {% if note.column == column.id %}
-                        <div class="task" draggable="true" id="{{ note.id }}-note" data-noteid="{{ note.id }}">{{ note.name }}<button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button></div>
+                        <div class="task" draggable="true" id="{{ note.id }}-note" data-noteid="{{ note.id }}">{{ note.name }}<button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button><button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button></div>
                     {% endif %}
                 {% endfor %}
                 <form id="{{ column.id }}-form" class="note-form">
@@ -265,6 +265,77 @@
         }
     })
 
+    function acceptNoteChanges(task, taskValue) {//nie dziala
+        console.log(taskValue);
+        var noteDiv = document.getElementById("note-" + task.id);
+        var noteText = document.getElementById("note-" + task.id + "-textbox");
+
+        // Sprawdź, czy elementy istnieją
+        if (!noteDiv || !noteText) {
+            console.error('Elementy nie znalezione');
+            return;
+        }
+
+        const json = JSON.stringify({id: task.id, name: noteText.value, position: task.position});
+        noteDiv.textContent = "updating...";
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/notes/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: json
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            noteDiv.textContent = data.name;
+            giveDefaultButtons(data);
+        })
+        .catch(error => console.error(error));
+    }
+
+    function cancelNoteChanges(note){//nie dziala
+        var noteDiv = document.getElementById("note-"+note.id);
+        noteDiv.textContent = note.name;
+        giveDefaultButtons(note);
+    }
+
+    function edytujTaska(nazwa) { //nie dziala(prawie dziala)
+        const task = document.getElementById(nazwa);
+        const id = task.dataset.noteid;
+        const textbox = document.createElement("input");
+        textbox.type = "text";
+        textbox.value = task.name; // Użyj value zamiast textContent
+        textbox.id = "note-"+task.id+"-textbox";
+        task.textContent = "";
+        task.appendChild(textbox);
+        const button = document.createElement("button");
+        button.type = "submit";
+        button.name = "edit";
+        button.classList.add('edit');
+        button.innerText = "✅";
+        button.onclick = function () {
+            // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
+            acceptNoteChanges(task, textbox.value);
+        };
+        task.appendChild(button);
+        const csrftoken = getCookie('csrftoken');
+        fetch("/api/notes/", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({id: id})
+        });
+    }
+
     function usunTaska(nazwa) {
         const task = document.getElementById(nazwa);
         console.log(task);
@@ -358,6 +429,10 @@
                 kolumna.remove();
             }
         });
+    }
+
+    function edytujKolumne(id, name, max){
+
     }
 </script>
 </body>
