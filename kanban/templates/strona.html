@@ -13,7 +13,8 @@
     <div class="lanes" id="lanes">
         {% for column in columns %}
             <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}">
-                <h3 class="heading">{{ column.name }}</h3>
+                <div class="heading"><div class="nazwa"><h4>{{ column.name }}</h4></div><div class="licznik" data-max="{{ column.max }}">liczenie</div></div>
+
                 <div class="przyciski">
                     <button type="submit" name="edit" class="edit">Edytuj</button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń</button>
@@ -119,7 +120,20 @@
     const draggables = document.querySelectorAll(".task");
     const droppables = document.querySelectorAll(".swim-lane");
 
+    let stary;
+    let starapoz;
+
     function dragstart(task){
+        stary = task.parentElement;
+        starapoz = 0;
+        for (let child of stary.children) {
+            if(child == task){
+                break;
+            }
+            else{
+                starapoz += 1;
+            }
+        }
         task.classList.add("is-dragging");
     }
 
@@ -139,29 +153,41 @@
             i += 1;
         }
 
-        var json;
-        if (pos) {
-            json = JSON.stringify({
-                id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
-                column: parseInt(zone.dataset.colid),
-                position: pos
-            })
+        zlicz(stary);
+        zlicz(zone);
+        const licznik = zone.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0]
+        if (licznik.dataset.max < zone.children.length - 3) {
+            for (let j = 0; j < starapoz; j++) {
+                stary.insertBefore(task, stary.children[starapoz]);
+                zlicz(stary);
+                zlicz(zone);
+            }
         } else {
-            json = JSON.stringify({
-                id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
-                column: parseInt(zone.dataset.colid)
-            })
-        }
 
-        const csrftoken = getCookie('csrftoken');
-        const response = await fetch("/api/notes/", {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                'X-CSRFToken': csrftoken
-            },
-            body: json
-        });
+            var json;
+            if (pos) {
+                json = JSON.stringify({
+                    id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
+                    column: parseInt(zone.dataset.colid),
+                    position: pos
+                })
+            } else {
+                json = JSON.stringify({
+                    id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
+                    column: parseInt(zone.dataset.colid)
+                })
+            }
+
+            const csrftoken = getCookie('csrftoken');
+            const response = await fetch("/api/notes/", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    'X-CSRFToken': csrftoken
+                },
+                body: json
+            });
+        }
     }
 
     draggables.forEach((task) => {
@@ -186,7 +212,6 @@
             } else {
                 zone.insertBefore(curTask, bottomTask);
             }
-
         });
     });
 
@@ -218,6 +243,27 @@
             }
         }
     }
+
+    function zlicz(element) {
+        console.log(element);
+        const licznik = element.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0];
+        if(licznik.dataset.max == "None"){
+            licznik.innerText = licznik.parentElement.parentElement.children.length-3;
+        }
+        else{
+            licznik.innerText = licznik.parentElement.parentElement.children.length-3+"/"+licznik.dataset.max;
+        }
+    }
+
+    document.querySelectorAll(".licznik").forEach((element) => {
+        console.log(element.dataset.max);
+        if(element.dataset.max == "None"){
+            element.innerText = element.parentElement.parentElement.children.length-3;
+        }
+        else{
+            element.innerText = element.parentElement.parentElement.children.length-3+"/"+element.dataset.max;
+        }
+    })
 
     function usunTaska(nazwa) {
         const task = document.getElementById(nazwa);
