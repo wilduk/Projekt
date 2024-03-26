@@ -22,7 +22,10 @@
                 <!-- Existing tasks -->
                 {% for note in notes %}
                     {% if note.column == column.id %}
-                        <div class="task" draggable="true" id="{{ note.id }}-note" data-noteid="{{ note.id }}">{{ note.name }}<button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button><button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button></div>
+                        <div class="task" draggable="true" id="{{ note.id }}-note" data-noteid="{{ note.id }}">{{ note.name }}
+                            <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button>
+                            <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button>
+                        </div>
                     {% endif %}
                 {% endfor %}
                 <form id="{{ column.id }}-form" class="note-form">
@@ -61,7 +64,6 @@
         const input = formElement.querySelector('input');
         const value = input.value;
         const todoLane = formElement.parentElement;
-        console.log(todoLane);
 
         if (!value) return;
 
@@ -93,8 +95,6 @@
             newTask.setAttribute("draggable", "true");
             newTask.innerText = taskData.name;
             newTask.dataset.noteid = taskData.id;
-
-            console.log(newTask);
 
             {#<p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>#}
 
@@ -199,7 +199,7 @@
         });
     });
 
-    droppables.forEach((zone) => {
+    function droppableFunc(zone){
         zone.addEventListener("dragover", async (e) => {
             e.preventDefault();
 
@@ -213,6 +213,10 @@
                 zone.insertBefore(curTask, bottomTask);
             }
         });
+    }
+
+    droppables.forEach((zone) => {
+        droppableFunc(zone);
     });
 
     const insertAboveTask = (zone, mouseY) => {
@@ -245,9 +249,8 @@
     }
 
     function zlicz(element) {
-        console.log(element);
         const licznik = element.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0];
-        if(licznik.dataset.max == "None"){
+        if(licznik.dataset.max == "None" || licznik.dataset.max == "null"){
             licznik.innerText = licznik.parentElement.parentElement.children.length-3;
         }
         else{
@@ -256,7 +259,6 @@
     }
 
     document.querySelectorAll(".licznik").forEach((element) => {
-        console.log(element.dataset.max);
         if(element.dataset.max == "None"){
             element.innerText = element.parentElement.parentElement.children.length-3;
         }
@@ -265,19 +267,9 @@
         }
     })
 
-    function acceptNoteChanges(task, taskValue) {//nie dziala
-        console.log(taskValue);
-        var noteDiv = document.getElementById("note-" + task.id);
-        var noteText = document.getElementById("note-" + task.id + "-textbox");
-
-        // Sprawdź, czy elementy istnieją
-        if (!noteDiv || !noteText) {
-            console.error('Elementy nie znalezione');
-            return;
-        }
-
-        const json = JSON.stringify({id: task.id, name: noteText.value, position: task.position});
-        noteDiv.textContent = "updating...";
+    function acceptNoteChanges(task, taskValue) {
+        const json = JSON.stringify({id: task.dataset.noteid, name: taskValue});
+        task.textContent = "updating...";
         const csrftoken = getCookie('csrftoken');
         fetch('/api/notes/', {
             method: 'PUT',
@@ -294,10 +286,23 @@
             return response.json();
         })
         .then(data => {
-            noteDiv.textContent = data.name;
-            giveDefaultButtons(data);
+            task.textContent = data.name;
+            giveDefaultButtons(task);
         })
         .catch(error => console.error(error));
+    }
+
+    function giveDefaultButtons(note){
+        const usuwanie = document.createElement("button");
+        usuwanie.classList.add("usuwanie");
+        usuwanie.onclick = function (){usunTaska(note.id+'-note')};
+        usuwanie.textContent = "🗑";
+        const edytowanie = document.createElement("button");
+        edytowanie.classList.add("edytowanie");
+        edytowanie.onclick = function (){usunTaska(note.id+'-note')};
+        edytowanie.textContent = "E";
+        note.appendChild(usuwanie);
+        note.appendChild(edytowanie);
     }
 
     function cancelNoteChanges(note){//nie dziala
@@ -308,12 +313,14 @@
 
     function edytujTaska(nazwa) { //nie dziala(prawie dziala)
         const task = document.getElementById(nazwa);
-        const id = task.dataset.noteid;
         const textbox = document.createElement("input");
         textbox.type = "text";
-        textbox.value = task.name; // Użyj value zamiast textContent
-        textbox.id = "note-"+task.id+"-textbox";
-        task.textContent = "";
+        var text = '';
+            for (var i = 0; i < task.childNodes.length; ++i)
+                if (task.childNodes[i].nodeType === Node.TEXT_NODE)
+                    text += task.childNodes[i].textContent;
+        textbox.value = text.trim(); // Użyj value zamiast textContent
+        task.textContent = task.name;
         task.appendChild(textbox);
         const button = document.createElement("button");
         button.type = "submit";
@@ -325,20 +332,10 @@
             acceptNoteChanges(task, textbox.value);
         };
         task.appendChild(button);
-        const csrftoken = getCookie('csrftoken');
-        fetch("/api/notes/", {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify({id: id})
-        });
     }
 
     function usunTaska(nazwa) {
         const task = document.getElementById(nazwa);
-        console.log(task);
         const id = task.dataset.noteid;
         const csrftoken = getCookie('csrftoken');
         fetch("/api/notes/", {
@@ -360,9 +357,18 @@
         kolumna.classList.add("swim-lane");
         kolumna.id = kol.id+"-lane";
         kolumna.dataset.colid = kol.id;
-        const nazwa = document.createElement('h3');
-        nazwa.classList.add("heading")
-        nazwa.innerText = kol.name;
+        const nazwa = document.createElement('div');
+        nazwa.classList.add("heading");
+        const tekst = document.createElement("div");
+        tekst.classList.add("nazwa");
+        const h4 = document.createElement("h4");
+        h4.innerText = kol.name;
+        tekst.appendChild(h4);
+        nazwa.appendChild(tekst);
+        const licznik = document.createElement("div");
+        licznik.classList.add("licznik");
+        licznik.dataset.max = kol.max;
+        nazwa.appendChild(licznik);
         const przyciskiDiv = document.createElement('div');
         przyciskiDiv.classList.add('przyciski');
         const edytuj = document.createElement('button');
@@ -396,6 +402,8 @@
         kolumna.appendChild(przyciskiDiv);
         kolumna.appendChild(form);
         lista.insertBefore(kolumna,dodaj);
+        droppableFunc(kolumna);
+        zlicz(kolumna);
     }
 
     async function dodajKolumne() {
@@ -424,7 +432,6 @@
             },
                 body: JSON.stringify({id: id})
         }).then((response)=>{
-            console.log(response.status);
             if(response.status == 204){
                 kolumna.remove();
             }
