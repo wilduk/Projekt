@@ -10,12 +10,7 @@
   </head>
   <body>
     <div class="board">
-      <form id="todo-form">
-        <input type="text" placeholder="New TODO..." id="todo-input" />
-        <button type="submit">Add +</button>
-      </form>
-
-      <div class="lanes", id="lanes">
+      <div class="lanes" id="lanes">
           {% for column in columns %}
             <div class="swim-lane" id="{{ column.name }}-lane" data-colid="{{ column.id }}">
               <h3 class="heading">{{ column.name }}</h3>
@@ -25,6 +20,10 @@
                 		<p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>
                 	{% endif %}
                 {% endfor %}
+              <form id="{{ column.name }}-form" class="note-form">
+                <input type="text" placeholder="New task..." id="{{ column.name }}-input" />
+                <button type="submit">Add +</button>
+              </form>
             </div>
           {% endfor %}
 
@@ -34,8 +33,6 @@
 
     <script>
       const form = document.getElementById("todo-form");
-      const input = document.getElementById("todo-input");
-      const todoLane = document.getElementById("lanes").children[0];
 
       function getCookie(name) {
             let cookieValue = null;
@@ -53,16 +50,17 @@
             return cookieValue;
         }
 
-
-      form.addEventListener("submit", async (e) => {
+      async function handleSubmit(e) {
         e.preventDefault();
+        const formElement = e.target;
+        const input = formElement.querySelector('input');
         const value = input.value;
+        const todoLane = formElement.parentElement;
 
         if (!value) return;
 
         try {
           // Send POST request to create a new task
-            console.log(todoLane.colid);
           const csrftoken = getCookie('csrftoken');
           const response = await fetch("/api/notes/", {
             method: "POST",
@@ -105,7 +103,7 @@
         } catch (error) {
           console.error("Error:", error.message);
         }
-      });
+      }
 
       const draggables = document.querySelectorAll(".task");
       const droppables = document.querySelectorAll(".swim-lane");
@@ -113,16 +111,17 @@
       draggables.forEach((task) => {
         task.addEventListener("dragstart", () => {
           task.classList.add("is-dragging");
-          task.dataset.zoneid = task.closest(".swim-lane").getAttribute("id");
+          //////
         });
         task.addEventListener("dragend", async () => {
             task.classList.remove("is-dragging");
+            task.dataset.zoneid = task.closest(".swim-lane").getAttribute("id");
             const zoneId = task.dataset.zoneid; // Pobierz identyfikator strefy
             const zone = document.getElementById(zoneId);
             var pos = null;
 
 
-                var i = 1;
+                var i = 0;
                 for(const element of zone.children)
                 {
                     if (element == task) {
@@ -131,18 +130,17 @@
                     i += 1;
                 }
 
-
             var json;
             if (pos) {
                 json = JSON.stringify({
                     id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
-                    column: parseInt(zone.dataset.colid)
+                    column: parseInt(zone.dataset.colid),
+                    position: pos
                 })
             } else {
                 json = JSON.stringify({
                     id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
-                    column: parseInt(zone.dataset.colid),
-                    position: pos
+                    column: parseInt(zone.dataset.colid)
                 })
             }
 
@@ -166,7 +164,8 @@
             const curTask = document.querySelector(".is-dragging");
 
             if (!bottomTask) {
-                zone.appendChild(curTask);
+                const form = document.getElementById(zone.id.slice(0,-5)+"-form");
+                zone.insertBefore(curTask, form);
             } else {
                 zone.insertBefore(curTask, bottomTask);
             }
@@ -193,6 +192,13 @@
 
         return closestTask;
       };
+
+      const columns = document.getElementById("lanes").children;
+      for (let columnsKey in columns) {
+          if(typeof columnsKey == "number") {
+              document.getElementById(columns[columnsKey].id.slice(0, -5) + "-form").addEventListener("submit", handleSubmit);
+          }
+      }
     </script>
   </body>
 </html>

@@ -110,7 +110,7 @@ class ColumnHTMLView(View):
         api_response = api_view_instance.get(request)
         data = api_response.data
 
-        notes = Note.objects
+        notes = Note.objects.order_by("position")
         serializer = NoteSerializer(notes, many=True).data
 
         return render(request, 'strona.html', {'columns': data, 'notes': serializer})
@@ -162,6 +162,7 @@ class NoteAPIView(APIView):
         name = request.data.get('name', None)
         column = request.data.get('column', None)
         new_pos = request.data.get('position', None)
+        print(new_pos)
 
         if id is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
@@ -174,14 +175,9 @@ class NoteAPIView(APIView):
         if name is not None:
             note.name = request.data["name"]
 
-        if column is not None:
-            columnsMin = Column.objects.order_by("position").first().position
-            column = column + columnsMin - 1
-            print(request.data["column"]+columnsMin-1)
-            print(Column.objects.filter(position=request.data['column']+columnsMin-1).first().name)
-            if Column.objects.filter(position=request.data['column']+columnsMin-1).exists():
-                print(Column.objects.get(position=request.data['column']+columnsMin-1))
-                note.column = Column.objects.get(position=request.data['column']+columnsMin-1)
+        if column is not None and column != note.column:
+            if Column.objects.filter(id=column).exists():
+                note.column = Column.objects.get(id=column)
 
             notes_to_update = Note.objects.filter(column=note.column, position__gte=note.position)
             notes_to_update.update(position=models.F('position') - 1)
@@ -196,8 +192,7 @@ class NoteAPIView(APIView):
         elif new_pos is not None and new_pos != note.position:
             notes_to_update = Note.objects.filter(column=note.column,
                                                   position__gte=min(new_pos, note.position),
-                                                  position__lte=max(new_pos, note.position)).exclude(
-                id=note.id)
+                                                  position__lte=max(new_pos, note.position))
             if new_pos > note.position:
                 notes_to_update.update(position=models.F('position') - 1)
             else:
