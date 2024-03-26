@@ -34,7 +34,7 @@ class ColumnAPIView(APIView):
         name = request.data.get('name', None)
 
         if name is None:
-            name = "Kolumna " + str((Column.objects.count()+1) if Column.objects.exists() else 1)
+            name = ""
 
         column_data = {
             'name': name,
@@ -47,6 +47,7 @@ class ColumnAPIView(APIView):
         serializer = ColumnSerializer(data=column_data)
         if serializer.is_valid():
             serializer.save()
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -57,6 +58,8 @@ class ColumnAPIView(APIView):
 
     def delete(self, request):
         try:
+            if Column.objects.all().count() <= 2:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
             column_id = request.data['id']
             column = Column.objects.get(id=column_id)
             position = column.position
