@@ -34,7 +34,7 @@ class ColumnAPIView(APIView):
         name = request.data.get('name', None)
 
         if name is None:
-            name = "Kolumna " + str((Column.objects.order_by("-id").first().id+1) if Column.objects.exists() else 1)
+            name = "Kolumna " + str((Column.objects.count()+1) if Column.objects.exists() else 1)
 
         column_data = {
             'name': name,
@@ -141,9 +141,12 @@ class NoteAPIView(APIView):
         if column is None:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
         name = request.data.get('name', 'notatka ' + str((Note.objects.order_by("-id").first().id+1) if Note.objects.exists() else 1))
-        position = 0
-        if "position" in request.data is None:
-            position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+        position = request.data.get("position", None)
+        if position is None:
+            if Note.objects.filter(column=id).exists():
+                position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+            else:
+                position = 1
         else:
             with transaction.atomic():
                 notes_to_update = Note.objects.filter(column=column,position__gte=position)
@@ -176,11 +179,10 @@ class NoteAPIView(APIView):
             note.name = request.data["name"]
 
         if column is not None and column != note.column:
-            if Column.objects.filter(id=column).exists():
-                note.column = Column.objects.get(id=column)
-
             notes_to_update = Note.objects.filter(column=note.column, position__gte=note.position)
             notes_to_update.update(position=models.F('position') - 1)
+            if Column.objects.filter(id=column).exists():
+                note.column = Column.objects.get(id=column)
             if new_pos is not None:
                 notes_to_update = Note.objects.filter(column=column, position__gte=new_pos)
                 notes_to_update.update(position=models.F('position') + 1)
@@ -190,6 +192,8 @@ class NoteAPIView(APIView):
                 else:
                     new_pos = 1
         elif new_pos is not None and new_pos != note.position:
+            pos_min = Note.objects.filter(column=note.column).order_by("-position").first().position
+            new_pos += pos_min
             notes_to_update = Note.objects.filter(column=note.column,
                                                   position__gte=min(new_pos, note.position),
                                                   position__lte=max(new_pos, note.position))

@@ -1,162 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Drag & Drop API</title>
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Kanban</title>
     {% load static %}
     <link rel="stylesheet" type="text/css" href="{% static 'styles.css' %}">
-  </head>
-  <body>
-    <div class="board">
-      <div class="lanes" id="lanes">
-          {% for column in columns %}
+</head>
+<body>
+<div class="board">
+    <div class="lanes" id="lanes">
+        {% for column in columns %}
             <div class="swim-lane" id="{{ column.name }}-lane" data-colid="{{ column.id }}">
-              <h3 class="heading">{{ column.name }}</h3>
-              <!-- Existing tasks -->
+                <h3 class="heading">{{ column.name }}</h3>
+                <div class="przyciski">
+                    <button type="submit" name="edit" class="edit">Edytuj</button>
+                    <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.name }}')">Usuń</button>
+                </div>
+                <!-- Existing tasks -->
                 {% for note in notes %}
-                	{% if note.column == column.id %}
-                		<p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>
-                	{% endif %}
+                    {% if note.column == column.id %}
+                        <div class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}<button class="usuwanie">🗑</button></div>
+                    {% endif %}
                 {% endfor %}
-              <form id="{{ column.name }}-form" class="note-form">
-                <input type="text" placeholder="New task..." id="{{ column.name }}-input" />
-                <button type="submit">Add +</button>
-              </form>
+                <form id="{{ column.name }}-form" class="note-form">
+                    <input type="text" placeholder="Nowe zadanie..." id="{{ column.name }}-input"/>
+                    <button type="submit">Dodaj</button>
+                </form>
             </div>
-          {% endfor %}
-
+        {% endfor %}
+        <button type="submit" class="circle" id="add" onclick="dodajKolumne()"></button>
         <!-- Other swim-lanes -->
-      </div>
     </div>
+</div>
 
-    <script>
-      const form = document.getElementById("todo-form");
+<script>
+    const form = document.getElementById("todo-form");
 
-      function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    // Does this cookie string begin with the name we want?
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
         }
+        return cookieValue;
+    }
 
-      async function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
         const formElement = e.target;
         const input = formElement.querySelector('input');
         const value = input.value;
         const todoLane = formElement.parentElement;
+        console.log(todoLane);
 
         if (!value) return;
 
         try {
-          // Send POST request to create a new task
-          const csrftoken = getCookie('csrftoken');
-          const response = await fetch("/api/notes/", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify({
-              id: parseInt(todoLane.dataset.colid), // Assuming 'todo-lane' is the ID of the column
-              name: value
-            })
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to add task");
-          }
-
-          // Assuming the response returns the added task data
-          const taskData = await response.json();
-
-          // Create new task element
-          const newTask = document.createElement("p");
-          newTask.classList.add("task");
-          newTask.setAttribute("draggable", "true");
-          newTask.innerText = taskData.name;
-
-          newTask.addEventListener("dragstart", () => {
-            newTask.classList.add("is-dragging");
-          });
-
-          newTask.addEventListener("dragend", () => {
-            newTask.classList.remove("is-dragging");
-          });
-
-          // Append the new task to the todo lane
-          todoLane.appendChild(newTask);
-
-          // Clear input field
-          input.value = "";
-        } catch (error) {
-          console.error("Error:", error.message);
-        }
-      }
-
-      const draggables = document.querySelectorAll(".task");
-      const droppables = document.querySelectorAll(".swim-lane");
-
-      draggables.forEach((task) => {
-        task.addEventListener("dragstart", () => {
-          task.classList.add("is-dragging");
-          //////
-        });
-        task.addEventListener("dragend", async () => {
-            task.classList.remove("is-dragging");
-            task.dataset.zoneid = task.closest(".swim-lane").getAttribute("id");
-            const zoneId = task.dataset.zoneid; // Pobierz identyfikator strefy
-            const zone = document.getElementById(zoneId);
-            var pos = null;
-
-
-                var i = 0;
-                for(const element of zone.children)
-                {
-                    if (element == task) {
-                        pos = i;
-                    }
-                    i += 1;
-                }
-
-            var json;
-            if (pos) {
-                json = JSON.stringify({
-                    id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
-                    column: parseInt(zone.dataset.colid),
-                    position: pos
-                })
-            } else {
-                json = JSON.stringify({
-                    id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
-                    column: parseInt(zone.dataset.colid)
-                })
-            }
-
+            // Send POST request to create a new task
             const csrftoken = getCookie('csrftoken');
             const response = await fetch("/api/notes/", {
-                method: "PUT",
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     'X-CSRFToken': csrftoken
                 },
-                body: json
+                body: JSON.stringify({
+                    id: parseInt(todoLane.dataset.colid), // Assuming 'todo-lane' is the ID of the column
+                    name: value
+                })
             });
-        });
-      });
 
-      droppables.forEach((zone) => {
+            if (!response.ok) {
+                throw new Error("Failed to add task");
+            }
+
+            // Assuming the response returns the added task data
+            const taskData = await response.json();
+
+            // Create new task element
+            const newTask = document.createElement("div");
+            newTask.classList.add("task");
+            newTask.setAttribute("draggable", "true");
+            newTask.innerText = taskData.name;
+            newTask.dataset.noteid = taskData.id;
+
+            console.log(newTask);
+
+            {#<p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>#}
+
+            newTask.addEventListener("dragstart", () => {
+                dragstart(newTask);
+            });
+
+            newTask.addEventListener("dragend", () => {
+                dragend(newTask);
+            });
+
+            // Append the new task to the todo lane
+            const form = document.getElementById(todoLane.id.slice(0, -5) + "-form");
+            todoLane.insertBefore(newTask, form);
+
+            // Clear input field
+            input.value = "";
+        } catch (error) {
+            console.error("Error:", error.message);
+        }
+    }
+
+    const draggables = document.querySelectorAll(".task");
+    const droppables = document.querySelectorAll(".swim-lane");
+
+    function dragstart(task){
+        task.classList.add("is-dragging");
+    }
+
+    async function dragend(task) {
+        task.classList.remove("is-dragging");
+        task.dataset.zoneid = task.closest(".swim-lane").getAttribute("id");
+        const zoneId = task.dataset.zoneid; // Pobierz identyfikator strefy
+        const zone = document.getElementById(zoneId);
+        var pos = null;
+
+
+        var i = -1;
+        for (const element of zone.children) {
+            if (element == task) {
+                pos = i;
+            }
+            i += 1;
+        }
+
+        var json;
+        if (pos) {
+            json = JSON.stringify({
+                id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
+                column: parseInt(zone.dataset.colid),
+                position: pos
+            })
+        } else {
+            json = JSON.stringify({
+                id: parseInt(task.dataset.noteid), // Assuming 'todo-lane' is the ID of the column
+                column: parseInt(zone.dataset.colid)
+            })
+        }
+
+        const csrftoken = getCookie('csrftoken');
+        const response = await fetch("/api/notes/", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrftoken
+            },
+            body: json
+        });
+    }
+
+    draggables.forEach((task) => {
+        task.addEventListener("dragstart", () => {
+            dragstart(task);
+        });
+        task.addEventListener("dragend", async () => {
+            dragend(task);
+        });
+    });
+
+    droppables.forEach((zone) => {
         zone.addEventListener("dragover", async (e) => {
             e.preventDefault();
 
@@ -164,41 +181,135 @@
             const curTask = document.querySelector(".is-dragging");
 
             if (!bottomTask) {
-                const form = document.getElementById(zone.id.slice(0,-5)+"-form");
+                const form = document.getElementById(zone.id.slice(0, -5) + "-form");
                 zone.insertBefore(curTask, form);
             } else {
                 zone.insertBefore(curTask, bottomTask);
             }
 
         });
-      });
+    });
 
-      const insertAboveTask = (zone, mouseY) => {
+    const insertAboveTask = (zone, mouseY) => {
         const els = zone.querySelectorAll(".task:not(.is-dragging)");
 
         let closestTask = null;
         let closestOffset = Number.NEGATIVE_INFINITY;
 
         els.forEach((task) => {
-          const { top } = task.getBoundingClientRect();
+            const {top} = task.getBoundingClientRect();
 
-          const offset = mouseY - top;
+            const offset = mouseY - top;
 
-          if (offset < 0 && offset > closestOffset) {
-            closestOffset = offset;
-            closestTask = task;
-          }
+            if (offset < 0 && offset > closestOffset) {
+                closestOffset = offset;
+                closestTask = task;
+            }
         });
 
         return closestTask;
-      };
+    };
 
-      const columns = document.getElementById("lanes").children;
-      for (let columnsKey in columns) {
-          if(typeof columnsKey == "number") {
-              document.getElementById(columns[columnsKey].id.slice(0, -5) + "-form").addEventListener("submit", handleSubmit);
-          }
-      }
-    </script>
-  </body>
+    const columns = document.getElementById("lanes").children;
+    for (let columnsKey in columns) {
+        if (!isNaN(parseInt(columnsKey))) {
+            if (columns[columnsKey].classList.contains("swim-lane")) {
+                document.getElementById(columns[columnsKey].id.slice(0, -5) + "-form").addEventListener("submit", handleSubmit);
+            }
+        }
+    }
+
+    function wyswietlKolumne(kol) {
+
+        const lista = document.getElementById('lanes');
+        const dodaj = document.getElementById('add');
+        const kolumna = document.createElement('div');
+        kolumna.classList.add("swim-lane");
+        kolumna.id = kol.name+"-lane";
+        kolumna.dataset.colid = kol.id;
+        const nazwa = document.createElement('h3');
+        nazwa.classList.add("heading")
+        nazwa.innerText = kol.name;
+        const przyciskiDiv = document.createElement('div');
+        przyciskiDiv.classList.add('przyciski');
+        const edytuj = document.createElement('button');
+        edytuj.type = "submit";
+        edytuj.name = "edit";
+        edytuj.classList.add('edit');
+        edytuj.innerText = "Edytuj";
+        const usun = document.createElement('button');
+        usun.type = "submit";
+        usun.name = "delete";
+        usun.classList.add('delete');
+        usun.innerText = "Usuń";
+        usun.onclick = function() {usunKolumne(kol.name)};
+        const form = document.createElement('form');
+        form.id = kol.name+'-form';
+        form.classList.add('note-form');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Nowe zadanie...';
+        input.id = kol.name+'-input';
+        const submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.innerText = "Dodaj";
+        form.appendChild(input);
+        form.appendChild(submit);
+        form.addEventListener("submit", handleSubmit);
+        przyciskiDiv.appendChild(edytuj);
+        przyciskiDiv.appendChild(usun);
+        kolumna.appendChild(nazwa);
+        kolumna.appendChild(przyciskiDiv);
+        kolumna.appendChild(form);
+        lista.insertBefore(kolumna,dodaj);
+    }
+    {#<div class="swim-lane" id="{{ column.name }}-lane" data-colid="{{ column.id }}">#}
+    {#            <h3 class="heading">{{ column.name }}</h3>#}
+    {#            <div class="przyciski">#}
+    {#                <button type="submit" name="edit" class="edit">Edytuj</button>#}
+    {#                <button type="submit" name="delete" class="delete">Usuń</button>#}
+    {#            </div>#}
+    {#            <!-- Existing tasks -->#}
+    {#            {% for note in notes %}#}
+    {#                {% if note.column == column.id %}#}
+    {#                    <p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>#}
+    {#                {% endif %}#}
+    {#            {% endfor %}#}
+    {#            <form id="{{ column.name }}-form" class="note-form">#}
+    {#                <input type="text" placeholder="Nowe zadanie..." id="{{ column.name }}-input"/>#}
+    {#                <button type="submit">Dodaj</button>#}
+    {#            </form>#}
+    {#        </div>#}
+
+    async function dodajKolumne() {
+        const csrftoken = getCookie('csrftoken');
+        const response = await fetch("/api/columns/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrftoken
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                wyswietlKolumne(data);
+            });
+    }
+
+    function usunKolumne(nazwa) {
+        const kolumna = document.getElementById(nazwa+'-lane');
+        const id = kolumna.dataset.colid;
+        const csrftoken = getCookie('csrftoken');
+        fetch("/api/columns/", {
+            method: "Delete",
+            headers: {
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrftoken
+            },
+                body: JSON.stringify({id: id})
+        });
+        kolumna.remove();
+    }
+</script>
+</body>
 </html>
