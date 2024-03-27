@@ -17,7 +17,7 @@
                     <div class="licznik" data-max="{{ column.max }}">liczenie</div></div>
 
                 <div class="przyciski">
-                    <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj</button>
+                    <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj</button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń</button>
                 </div>
                 <!-- Existing tasks -->
@@ -422,8 +422,8 @@
             });
     }
 
-    function acceptColumnChanges(column, columnValue) {
-        const json = JSON.stringify({id: column.dataset.colid, name: columnValue});
+    function acceptColumnChanges(column, columnValue, maxValue) {
+        const json = JSON.stringify({id: column.dataset.colid, name: columnValue, max: maxValue});
         column.textContent = "updating...";
         const csrftoken = getCookie('csrftoken');
         fetch('/api/columns/', {
@@ -467,17 +467,29 @@
     }
 
     function edytujKolumne(nazwa) { //nie dziala(prawie dziala)
-        const column = document.getElementById(nazwa);
-        const max = column.getElementsByClassName("licznik")[0].dataset.max;
+        const column = document.getElementById("lanes").children;
+        console.log(column);
+        const max = column.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0].dataset.max;
         const textbox = document.createElement("input");
         textbox.type = "text";
         var text = '';
-            for (var i = 0; i < task.childNodes.length; ++i)
-                if (task.childNodes[i].nodeType === Node.TEXT_NODE)
-                    text += task.childNodes[i].textContent;
+            for (var i = 0; i < column.childNodes.length; ++i)
+                if (column.childNodes[i].nodeType === Node.TEXT_NODE)
+                    text += column.childNodes[i].textContent;
         textbox.value = text.trim(); // Użyj value zamiast textContent
-        task.textContent = task.name;
-        task.appendChild(textbox);
+        column.textContent = column.name;
+        column.appendChild(textbox);
+
+        const textbox2 = document.createElement("input");
+        textbox2.type = "text";
+        var text2 = '';
+            for (var i = 0; i < column.childNodes.length; ++i)
+                if (column.childNodes[i].nodeType === Node.TEXT_NODE)
+                    text2 += column.childNodes[i].textContent;
+        textbox2.value = text2.trim(); // Użyj value zamiast textContent
+        column.textContent = column.name;
+        column.appendChild(textbox2);
+
         const button = document.createElement("button");
         button.type = "submit";
         button.name = "edit";
@@ -485,9 +497,9 @@
         button.innerText = "✅";
         button.onclick = function () {
             // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
-            acceptNoteChanges(task, textbox.value);
+            acceptColumnChanges(column, textbox.value, textbox2.value);
         };
-        task.appendChild(button);
+        column.appendChild(button);
     }
 
     function usunKolumne(id) {
@@ -507,9 +519,6 @@
         });
     }
 
-    function edytujKolumne(id, name, max){
-
-    }
 </script>
 </body>
 </html>
