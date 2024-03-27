@@ -13,7 +13,8 @@
     <div class="lanes" id="lanes">
         {% for column in columns %}
             <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}">
-                <div class="heading"><div class="nazwa"><h4>{{ column.name }}</h4></div><div class="licznik" data-max="{{ column.max }}">liczenie</div></div>
+                <div class="heading"><div class="nazwa"><h4>{{ column.name }}</h4></div>
+                    <div class="licznik" data-max="{{ column.max }}">liczenie</div></div>
 
                 <div class="przyciski">
                     <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}', '{{ column.name }}', '{{ column.max }}')">Edytuj</button>
@@ -419,6 +420,74 @@
             .then(data => {
                 wyswietlKolumne(data);
             });
+    }
+
+    function acceptColumnChanges(column, columnValue) {
+        const json = JSON.stringify({id: column.dataset.colid, name: columnValue});
+        column.textContent = "updating...";
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: json
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            column.textContent = data.name;
+            giveDefaultButtons(column);
+        })
+        .catch(error => console.error(error));
+    }
+
+    function giveColumnButtons(column){
+        const usuwanie = document.createElement("button");
+        usuwanie.classList.add("delete");
+        usuwanie.onclick = function (){usunKolumne(column.id+'-lane')};
+        usuwanie.textContent = "delete";
+        const edytowanie = document.createElement("button");
+        edytowanie.classList.add("edit");
+        edytowanie.onclick = function (){edytujKolumne(column.id+'-lane')};
+        edytowanie.textContent = "Edit";
+        column.appendChild(usuwanie);
+        column.appendChild(edytowanie);
+    }
+
+    function cancelColumnChanges(column){//nie dziala
+        var columnDiv = document.getElementById(column.id+"-lane");
+        columnDiv.textContent = column.name;
+        giveColumnButtons(column);
+    }
+
+    function edytujKolumne(nazwa) { //nie dziala(prawie dziala)
+        const column = document.getElementById(nazwa);
+        const max = column.getElementsByClassName("licznik")[0].dataset.max;
+        const textbox = document.createElement("input");
+        textbox.type = "text";
+        var text = '';
+            for (var i = 0; i < task.childNodes.length; ++i)
+                if (task.childNodes[i].nodeType === Node.TEXT_NODE)
+                    text += task.childNodes[i].textContent;
+        textbox.value = text.trim(); // Użyj value zamiast textContent
+        task.textContent = task.name;
+        task.appendChild(textbox);
+        const button = document.createElement("button");
+        button.type = "submit";
+        button.name = "edit";
+        button.classList.add('edit');
+        button.innerText = "✅";
+        button.onclick = function () {
+            // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
+            acceptNoteChanges(task, textbox.value);
+        };
+        task.appendChild(button);
     }
 
     function usunKolumne(id) {
