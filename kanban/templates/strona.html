@@ -13,10 +13,15 @@
     <div class="lanes" id="lanes">
         {% for column in columns %}
             <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}">
-                <div class="heading"><div class="nazwa"><h4>{{ column.name }}</h4></div>
-                    <div class="licznik" data-max="{{ column.max }}">liczenie</div></div>
-
+                <div class="heading">
+                    <div class="nazwa">
+                        <h4>{{ column.name }}</h4>
+                    </div>
+                    <div class="licznik" data-max="{{ column.max }}">liczenie</div>
+                </div>
                 <div class="przyciski">
+                    <button type="button" class="move-left" onclick="moveColumnLeft('{{ column.id }}-lane')"><</button>
+                    <button type="button" class="move-right" onclick="moveColumnRight('{{ column.id }}-lane')">></button>
                     <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj</button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń</button>
                 </div>
@@ -41,6 +46,64 @@
 </div>
 
 <script>
+    // JavaScript functions for moving columns
+    function moveColumnLeft(columnId) {
+        const column = document.getElementById(columnId);
+        const prevColumn = column.previousElementSibling;
+        if (prevColumn) {
+            column.parentNode.insertBefore(column, prevColumn);
+        }
+   const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: json
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            column.textContent = data.name;
+            giveDefaultButtons(column);
+        })
+        .catch(error => console.error(error));
+    }
+
+    function moveColumnRight(columnId) {
+        const column = document.getElementById(columnId);
+        const nextColumn = column.nextElementSibling;
+        if (nextColumn) {
+            column.parentNode.insertBefore(nextColumn, column);
+        }
+
+        const csrftoken = getCookie('csrftoken');
+        fetch('/api/columns/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: json
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            column.textContent = data.name;
+            giveDefaultButtons(column);
+        })
+        .catch(error => console.error(error));
+    }
+
     const form = document.getElementById("todo-form");
 
     function getCookie(name) {
@@ -459,6 +522,7 @@
         edytowanie.textContent = "Edit";
         column.appendChild(usuwanie);
         column.appendChild(edytowanie);
+
     }
 
     function cancelColumnChanges(column){//nie dziala
@@ -467,58 +531,33 @@
         giveColumnButtons(column);
     }
 
-    function edytujKolumne(nazwa) { //nie dziala(prawie dziala)
-        const column = document.getElementById(nazwa+"-lane").children;
-        let max = document.querySelectorAll(".licznik");
-        for(let el of max){
-            if(el.parentNode.parentNode.id == nazwa+"-lane"){
-                max = el;
-                break;
-            }
-        }
-        max = max.dataset.max;
-        console.log(max);
-        const textbox = document.createElement("input");
-        textbox.type = "text";
+    function edytujKolumne(nazwa) {
+        const columnLane = document.getElementById(nazwa + "-lane");
+        let maxElement = columnLane.querySelector(".licznik");
+        const nameElement = columnLane.querySelector(".nazwa h4");
 
-        let nametag = document.querySelectorAll(".nazwa");
-        for(let el of nametag){
-            if(el.parentNode.parentNode.id == nazwa+"-lane"){
-                nametag = el;
-                break;
-            }
-        }
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.value = nameElement.textContent.trim();
+        nameElement.textContent = '';
+        nameElement.appendChild(nameInput);
 
-        console.log(nametag);
+        const maxInput = document.createElement("input");
+        maxInput.type = "text";
+        maxInput.value = maxElement.dataset.max ? maxElement.dataset.max : '';
+        maxElement.textContent = '';
+        maxElement.appendChild(maxInput);
 
-        var text = '';
-            for (var i = 0; i < nametag.childNodes.length; ++i)
-                if (nametag.childNodes[i].nodeType === Node.TEXT_NODE)
-                    text += nametag.childNodes[i].textContent;
-        textbox.value = text.trim(); // Użyj value zamiast textContent
-        nametag.textContent = column.name;
-        nametag.appendChild(textbox);
-
-        const textbox2 = document.createElement("input");
-        textbox2.type = "text";
-        var text2 = '';
-            for (var i = 0; i < column.childNodes.length; ++i)
-                if (column.childNodes[i].nodeType === Node.TEXT_NODE)
-                    text2 += column.childNodes[i].textContent;
-        textbox2.value = text2.trim(); // Użyj value zamiast textContent
-        column.textContent = column.name;
-        column.appendChild(textbox2);
-
-        const button = document.createElement("button");
-        button.type = "submit";
-        button.name = "edit";
-        button.classList.add('edit');
-        button.innerText = "✅";
-        button.onclick = function () {
-            // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
-            acceptColumnChanges(column, textbox.value, textbox2.value);
+        const submitButton = document.createElement("button");
+        submitButton.type = "submit";
+        submitButton.name = "edit";
+        submitButton.classList.add("edit");
+        submitButton.innerText = "✅";
+        submitButton.onclick = function () {
+            acceptColumnChanges(columnLane, nameInput.value, maxInput.value);
         };
-        column.appendChild(button);
+
+        columnLane.appendChild(submitButton);
     }
 
     function usunKolumne(id) {
@@ -537,6 +576,7 @@
             }
         });
     }
+
 
 </script>
 </body>
