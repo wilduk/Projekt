@@ -294,6 +294,7 @@
     }
 
     function giveDefaultButtons(note){
+        console.log(note)
         const usuwanie = document.createElement("button");
         usuwanie.classList.add("usuwanie");
         usuwanie.onclick = function (){usunTaska(note.id+'-note')};
@@ -467,18 +468,36 @@
     }
 
     function edytujKolumne(nazwa) { //nie dziala(prawie dziala)
-        const column = document.getElementById("lanes").children;
-        console.log(column);
-        const max = column.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0].dataset.max;
+        const column = document.getElementById(nazwa+"-lane").children;
+        let max = document.querySelectorAll(".licznik");
+        for(let el of max){
+            if(el.parentNode.parentNode.id == nazwa+"-lane"){
+                max = el;
+                break;
+            }
+        }
+        max = max.dataset.max;
+        console.log(max);
         const textbox = document.createElement("input");
         textbox.type = "text";
+
+        let nametag = document.querySelectorAll(".nazwa");
+        for(let el of nametag){
+            if(el.parentNode.parentNode.id == nazwa+"-lane"){
+                nametag = el;
+                break;
+            }
+        }
+
+        console.log(nametag);
+
         var text = '';
-            for (var i = 0; i < column.childNodes.length; ++i)
-                if (column.childNodes[i].nodeType === Node.TEXT_NODE)
-                    text += column.childNodes[i].textContent;
+            for (var i = 0; i < nametag.childNodes.length; ++i)
+                if (nametag.childNodes[i].nodeType === Node.TEXT_NODE)
+                    text += nametag.childNodes[i].textContent;
         textbox.value = text.trim(); // Użyj value zamiast textContent
-        column.textContent = column.name;
-        column.appendChild(textbox);
+        nametag.textContent = column.name;
+        nametag.appendChild(textbox);
 
         const textbox2 = document.createElement("input");
         textbox2.type = "text";
