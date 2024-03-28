@@ -29,7 +29,7 @@
     margin: -8px;
 }
 
-.note-form input {
+input {
     padding: 12px;
     margin-right: 12px;
     width: 150px;
@@ -150,6 +150,10 @@
 
 .delete {
     background-color: #e85e5e;
+}
+
+.accept {
+    background-color: #cce19f;
 }
 
 .circle {

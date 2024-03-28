@@ -12,7 +12,7 @@
 <div class="board">
     <div class="lanes" id="lanes">
         {% for column in columns %}
-            <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}" data-editing="0">
+            <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}" data-editing="0" data-ogname="{{ column.name }}">
                 <div class="heading">
                     <div class="nazwa">
                         <h4>{{ column.name }}</h4>
@@ -32,9 +32,11 @@
                 {% for note in notes %}
                     {% if note.column == column.id %}
                         <div class="task" draggable="true" id="{{ note.id }}-note"
-                             data-noteid="{{ note.id }}">{{ note.name }}
-                            <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button>
-                            <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button>
+                             data-noteid="{{ note.id }}" data-ogname="{{ note.name }}">{{ note.name }}
+                            <div class="przyciski">
+                                <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button>
+                                <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button>
+                            </div>
                         </div>
                     {% endif %}
                 {% endfor %}
@@ -188,6 +190,7 @@
             newTask.id = taskData.id + "-note";
             newTask.innerText = taskData.name;
             newTask.dataset.noteid = taskData.id;
+            newTask.dataset.ogname = taskData.name;
 
             {#<p class="task" draggable="true" data-noteid="{{ note.id }}">{{ note.name }}</p>#}
 
@@ -360,6 +363,11 @@
         }
     })
 
+    function cancelNoteChanges(task) {//nie dziala
+        task.textContent = task.dataset.ogname;
+        giveDefaultButtons(task);
+    }
+
     function acceptNoteChanges(task, taskValue) {
         const json = JSON.stringify({id: task.dataset.noteid, name: taskValue});
         task.textContent = "updating...";
@@ -380,12 +388,16 @@
             })
             .then(data => {
                 task.textContent = data.name;
+                task.dataset.ogname = data.name;
                 giveDefaultButtons(task);
             })
             .catch(error => console.error(error));
     }
 
     function giveDefaultButtons(note) {
+        const przyciski = document.createElement("div");
+        przyciski.classList.add("przyciski");
+
         const usuwanie = document.createElement("button");
         usuwanie.classList.add("usuwanie");
         usuwanie.onclick = function () {
@@ -398,14 +410,9 @@
             edytujTaska(note.id);
         };
         edytowanie.textContent = "E";
-        note.appendChild(usuwanie);
-        note.appendChild(edytowanie);
-    }
-
-    function cancelNoteChanges(note) {//nie dziala
-        var noteDiv = document.getElementById("note-" + note.id);
-        noteDiv.textContent = note.name;
-        giveDefaultButtons(note);
+        przyciski.appendChild(edytowanie);
+        przyciski.appendChild(usuwanie);
+        note.appendChild(przyciski);
     }
 
     function edytujTaska(nazwa) { //nie dziala(prawie dziala)
@@ -419,16 +426,32 @@
         textbox.value = text.trim(); // Użyj value zamiast textContent
         task.textContent = task.name;
         task.appendChild(textbox);
+
+        const przyciski = document.createElement("div");
+        przyciski.classList.add("przyciski");
+
         const button = document.createElement("button");
         button.type = "submit";
         button.name = "edit";
-        button.classList.add('edit');
-        button.innerText = "✅";
+        button.classList.add('delete');
+        button.innerText = "❌";
         button.onclick = function () {
+            // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
+            cancelNoteChanges(task);
+        };
+        const cancel = document.createElement("button");
+        cancel.type = "submit";
+        cancel.name = "edit";
+        cancel.classList.add('edit');
+        cancel.classList.add('accept');
+        cancel.innerText = "✅";
+        cancel.onclick = function () {
             // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
             acceptNoteChanges(task, textbox.value);
         };
-        task.appendChild(button);
+        przyciski.appendChild(cancel);
+        przyciski.appendChild(button);
+        task.appendChild(przyciski);
     }
 
     function usunTaska(nazwa) {
@@ -458,6 +481,7 @@
         kolumna.id = kol.id + "-lane";
         kolumna.dataset.colid = kol.id;
         kolumna.dataset.editing = "0";
+        kolumna.dataset.ogname = kol.name;
         const nazwa = document.createElement('div');
         nazwa.classList.add("heading");
         const tekst = document.createElement("div");
@@ -507,11 +531,20 @@
             });
     }
 
+    function cancelColumnChanges(columnLane) {//nie dziala
+        const child = columnLane.getElementsByClassName("przyciski")[0]
+        columnLane.removeChild(child);
+        zlicz(columnLane);
+        const nazwaDiv = columnLane.getElementsByClassName("heading")[0].getElementsByClassName("nazwa")[0];
+        nazwaDiv.getElementsByTagName("h4")[0].innerText = columnLane.dataset.ogname;
+        columnLane.dataset.editing = "0";
+    }
+
     function acceptColumnChanges(column, columnValue, maxValue) {
         column.dataset.editing = "0";
         const json = JSON.stringify({id: column.dataset.colid, name: columnValue, max: parseInt(maxValue)});
         const nazwaDiv = column.getElementsByClassName("heading")[0].getElementsByClassName("nazwa")[0];
-        const child = column.getElementsByClassName("SubmitChangesButton")[0]
+        const child = column.getElementsByClassName("przyciski")[0]
         console.log(child);
         column.removeChild(child);
         nazwaDiv.getElementsByTagName("h4")[0].innerText = "updating...";
@@ -532,6 +565,7 @@
             })
             .then(data => {
                 nazwaDiv.getElementsByTagName("h4")[0].textContent = data.name;
+                column.dataset.ogname = data.name;
                 column.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0].dataset.max = data.max;
                 zlicz(column);
             })
@@ -575,12 +609,6 @@
 
     }
 
-    function cancelColumnChanges(column) {//nie dziala
-        var columnDiv = document.getElementById(column.id + "-lane");
-        columnDiv.textContent = column.name;
-        giveColumnButtons(column);
-    }
-
     function edytujKolumne(nazwa) {
         console.log(nazwa);
         const columnLane = document.getElementById(nazwa + "-lane");
@@ -613,13 +641,28 @@
         submitButton.type = "submit";
         submitButton.name = "edit";
         submitButton.classList.add("edit");
-        submitButton.classList.add("SubmitChangesButton");
+        submitButton.classList.add("accept");
         submitButton.innerText = "✅";
         submitButton.onclick = function () {
             acceptColumnChanges(columnLane, nameInput.value, maxInput.value);
         };
 
-        columnLane.insertBefore(submitButton,columnLane.getElementsByClassName("przyciski")[0]);
+        const cancelButton = document.createElement("button");
+        cancelButton.type = "submit";
+        cancelButton.name = "edit";
+        cancelButton.classList.add("edit");
+        cancelButton.classList.add("delete");
+        cancelButton.innerText = "❌";
+        cancelButton.onclick = function () {
+            cancelColumnChanges(columnLane);
+        };
+
+        const przyciki = document.createElement("div");
+        przyciki.classList.add("przyciski")
+
+        przyciki.appendChild(submitButton);
+        przyciki.appendChild(cancelButton);
+        columnLane.insertBefore(przyciki,columnLane.getElementsByClassName("przyciski")[0]);
     }
 
     function usunKolumne(id) {
