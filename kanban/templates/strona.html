@@ -12,7 +12,7 @@
 <div class="board">
     <div class="lanes" id="lanes">
         {% for column in columns %}
-            <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}">
+            <div class="swim-lane" id="{{ column.id }}-lane" data-colid="{{ column.id }}" data-editing="0">
                 <div class="heading">
                     <div class="nazwa">
                         <h4>{{ column.name }}</h4>
@@ -21,14 +21,18 @@
                 </div>
                 <div class="przyciski">
                     <button type="button" class="move-left" onclick="moveColumnLeft('{{ column.id }}-lane')"><</button>
-                    <button type="button" class="move-right" onclick="moveColumnRight('{{ column.id }}-lane')">></button>
-                    <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj</button>
-                    <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń</button>
+                    <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
+                    </button>
+                    <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
+                    </button>
+                    <button type="button" class="move-right" onclick="moveColumnRight('{{ column.id }}-lane')">>
+                    </button>
                 </div>
                 <!-- Existing tasks -->
                 {% for note in notes %}
                     {% if note.column == column.id %}
-                        <div class="task" draggable="true" id="{{ note.id }}-note" data-noteid="{{ note.id }}">{{ note.name }}
+                        <div class="task" draggable="true" id="{{ note.id }}-note"
+                             data-noteid="{{ note.id }}">{{ note.name }}
                             <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button>
                             <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button>
                         </div>
@@ -50,58 +54,82 @@
     function moveColumnLeft(columnId) {
         const column = document.getElementById(columnId);
         const prevColumn = column.previousElementSibling;
+        const dzieci = column.parentElement.children;
+        let position;
+
+        for (let i = 0; i < dzieci.length; i++) {
+            if(dzieci[i] === prevColumn){
+                position = i;
+                break;
+            }
+        }
+
         if (prevColumn) {
             column.parentNode.insertBefore(column, prevColumn);
+
+            const json = JSON.stringify({
+                    id: parseInt(column.dataset.colid), // Assuming 'todo-lane' is the ID of the column
+                    position: position+1
+            })
+
+            const csrftoken = getCookie('csrftoken');
+            fetch('/api/columns/', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: json
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .catch(error => console.error(error));
         }
-   const csrftoken = getCookie('csrftoken');
-        fetch('/api/columns/', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: json
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            column.textContent = data.name;
-            giveDefaultButtons(column);
-        })
-        .catch(error => console.error(error));
     }
 
     function moveColumnRight(columnId) {
         const column = document.getElementById(columnId);
         const nextColumn = column.nextElementSibling;
-        if (nextColumn) {
-            column.parentNode.insertBefore(nextColumn, column);
+        const dzieci = column.parentElement.children;
+
+        let position;
+
+        for (let i = 0; i < dzieci.length; i++) {
+            if(dzieci[i] === nextColumn){
+                position = i;
+                break;
+            }
         }
 
-        const csrftoken = getCookie('csrftoken');
-        fetch('/api/columns/', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: json
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            column.textContent = data.name;
-            giveDefaultButtons(column);
-        })
-        .catch(error => console.error(error));
+        if (nextColumn) {
+            column.parentNode.insertBefore(nextColumn, column);
+
+            const json = JSON.stringify({
+                    id: parseInt(column.dataset.colid), // Assuming 'todo-lane' is the ID of the column
+                    position: position+1
+            })
+
+            const csrftoken = getCookie('csrftoken');
+            fetch('/api/columns/', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: json
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .catch(error => console.error(error));
+        }
     }
 
     const form = document.getElementById("todo-form");
@@ -157,6 +185,7 @@
             const newTask = document.createElement("div");
             newTask.classList.add("task");
             newTask.setAttribute("draggable", "true");
+            newTask.id = taskData.id + "-note";
             newTask.innerText = taskData.name;
             newTask.dataset.noteid = taskData.id;
 
@@ -173,6 +202,9 @@
             // Append the new task to the todo lane
             const form = document.getElementById(todoLane.id.slice(0, -5) + "-form");
             todoLane.insertBefore(newTask, form);
+            zlicz(todoLane);
+
+            giveDefaultButtons(newTask);
 
             // Clear input field
             input.value = "";
@@ -187,14 +219,13 @@
     let stary;
     let starapoz;
 
-    function dragstart(task){
+    function dragstart(task) {
         stary = task.parentElement;
         starapoz = 0;
         for (let child of stary.children) {
-            if(child == task){
+            if (child == task) {
                 break;
-            }
-            else{
+            } else {
                 starapoz += 1;
             }
         }
@@ -263,7 +294,7 @@
         });
     });
 
-    function droppableFunc(zone){
+    function droppableFunc(zone) {
         zone.addEventListener("dragover", async (e) => {
             e.preventDefault();
 
@@ -314,20 +345,18 @@
 
     function zlicz(element) {
         const licznik = element.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0];
-        if(licznik.dataset.max == "None" || licznik.dataset.max == "null"){
-            licznik.innerText = licznik.parentElement.parentElement.children.length-3;
-        }
-        else{
-            licznik.innerText = licznik.parentElement.parentElement.children.length-3+"/"+licznik.dataset.max;
+        if (licznik.dataset.max == "None" || licznik.dataset.max == "null") {
+            licznik.innerText = licznik.parentElement.parentElement.children.length - 3;
+        } else {
+            licznik.innerText = licznik.parentElement.parentElement.children.length - 3 + "/" + licznik.dataset.max;
         }
     }
 
     document.querySelectorAll(".licznik").forEach((element) => {
-        if(element.dataset.max == "None"){
-            element.innerText = element.parentElement.parentElement.children.length-3;
-        }
-        else{
-            element.innerText = element.parentElement.parentElement.children.length-3+"/"+element.dataset.max;
+        if (element.dataset.max == "None") {
+            element.innerText = element.parentElement.parentElement.children.length - 3;
+        } else {
+            element.innerText = element.parentElement.parentElement.children.length - 3 + "/" + element.dataset.max;
         }
     })
 
@@ -343,35 +372,38 @@
             },
             body: json
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            task.textContent = data.name;
-            giveDefaultButtons(task);
-        })
-        .catch(error => console.error(error));
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                task.textContent = data.name;
+                giveDefaultButtons(task);
+            })
+            .catch(error => console.error(error));
     }
 
-    function giveDefaultButtons(note){
-        console.log(note)
+    function giveDefaultButtons(note) {
         const usuwanie = document.createElement("button");
         usuwanie.classList.add("usuwanie");
-        usuwanie.onclick = function (){usunTaska(note.id+'-note')};
+        usuwanie.onclick = function () {
+            usunTaska(note.id);
+        };
         usuwanie.textContent = "🗑";
         const edytowanie = document.createElement("button");
         edytowanie.classList.add("edytowanie");
-        edytowanie.onclick = function (){usunTaska(note.id+'-note')};
+        edytowanie.onclick = function () {
+            edytujTaska(note.id);
+        };
         edytowanie.textContent = "E";
         note.appendChild(usuwanie);
         note.appendChild(edytowanie);
     }
 
-    function cancelNoteChanges(note){//nie dziala
-        var noteDiv = document.getElementById("note-"+note.id);
+    function cancelNoteChanges(note) {//nie dziala
+        var noteDiv = document.getElementById("note-" + note.id);
         noteDiv.textContent = note.name;
         giveDefaultButtons(note);
     }
@@ -381,9 +413,9 @@
         const textbox = document.createElement("input");
         textbox.type = "text";
         var text = '';
-            for (var i = 0; i < task.childNodes.length; ++i)
-                if (task.childNodes[i].nodeType === Node.TEXT_NODE)
-                    text += task.childNodes[i].textContent;
+        for (var i = 0; i < task.childNodes.length; ++i)
+            if (task.childNodes[i].nodeType === Node.TEXT_NODE)
+                text += task.childNodes[i].textContent;
         textbox.value = text.trim(); // Użyj value zamiast textContent
         task.textContent = task.name;
         task.appendChild(textbox);
@@ -401,6 +433,7 @@
 
     function usunTaska(nazwa) {
         const task = document.getElementById(nazwa);
+        console.log(task);
         const id = task.dataset.noteid;
         const csrftoken = getCookie('csrftoken');
         fetch("/api/notes/", {
@@ -409,9 +442,11 @@
                 "Content-Type": "application/json",
                 'X-CSRFToken': csrftoken
             },
-                body: JSON.stringify({id: id})
+            body: JSON.stringify({id: id})
         });
+        const parent = task.parentElement;
         task.remove();
+        zlicz(parent);
     }
 
     function wyswietlKolumne(kol) {
@@ -420,8 +455,9 @@
         const dodaj = document.getElementById('add');
         const kolumna = document.createElement('div');
         kolumna.classList.add("swim-lane");
-        kolumna.id = kol.id+"-lane";
+        kolumna.id = kol.id + "-lane";
         kolumna.dataset.colid = kol.id;
+        kolumna.dataset.editing = "0";
         const nazwa = document.createElement('div');
         nazwa.classList.add("heading");
         const tekst = document.createElement("div");
@@ -434,26 +470,13 @@
         licznik.classList.add("licznik");
         licznik.dataset.max = kol.max;
         nazwa.appendChild(licznik);
-        const przyciskiDiv = document.createElement('div');
-        przyciskiDiv.classList.add('przyciski');
-        const edytuj = document.createElement('button');
-        edytuj.type = "submit";
-        edytuj.name = "edit";
-        edytuj.classList.add('edit');
-        edytuj.innerText = "Edytuj";
-        const usun = document.createElement('button');
-        usun.type = "submit";
-        usun.name = "delete";
-        usun.classList.add('delete');
-        usun.innerText = "Usuń";
-        usun.onclick = function() {usunKolumne(kol.id)};
         const form = document.createElement('form');
-        form.id = kol.id+'-form';
+        form.id = kol.id + '-form';
         form.classList.add('note-form');
         const input = document.createElement('input');
         input.type = 'text';
         input.placeholder = 'Nowe zadanie...';
-        input.id = kol.id+'-input';
+        input.id = kol.id + '-input';
         const submit = document.createElement('button');
         submit.type = 'submit';
         submit.innerText = "Dodaj";
@@ -461,12 +484,10 @@
         form.appendChild(input);
         form.appendChild(submit);
         form.addEventListener("submit", handleSubmit);
-        przyciskiDiv.appendChild(edytuj);
-        przyciskiDiv.appendChild(usun);
         kolumna.appendChild(nazwa);
-        kolumna.appendChild(przyciskiDiv);
+        lista.insertBefore(kolumna, dodaj);
+        giveColumnButtons(kolumna);
         kolumna.appendChild(form);
-        lista.insertBefore(kolumna,dodaj);
         droppableFunc(kolumna);
         zlicz(kolumna);
     }
@@ -487,8 +508,13 @@
     }
 
     function acceptColumnChanges(column, columnValue, maxValue) {
-        const json = JSON.stringify({id: column.dataset.colid, name: columnValue, max: maxValue});
-        column.textContent = "updating...";
+        column.dataset.editing = "0";
+        const json = JSON.stringify({id: column.dataset.colid, name: columnValue, max: parseInt(maxValue)});
+        const nazwaDiv = column.getElementsByClassName("heading")[0].getElementsByClassName("nazwa")[0];
+        const child = column.getElementsByClassName("SubmitChangesButton")[0]
+        console.log(child);
+        column.removeChild(child);
+        nazwaDiv.getElementsByTagName("h4")[0].innerText = "updating...";
         const csrftoken = getCookie('csrftoken');
         fetch('/api/columns/', {
             method: 'PUT',
@@ -498,41 +524,72 @@
             },
             body: json
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            column.textContent = data.name;
-            giveDefaultButtons(column);
-        })
-        .catch(error => console.error(error));
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                nazwaDiv.getElementsByTagName("h4")[0].textContent = data.name;
+                column.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0].dataset.max = data.max;
+                zlicz(column);
+            })
+            .catch(error => console.error(error));
     }
 
-    function giveColumnButtons(column){
+    function giveColumnButtons(column) {
+        const przyciskiDiv = document.createElement("div");
+        przyciskiDiv.classList.add("przyciski");
+
         const usuwanie = document.createElement("button");
         usuwanie.classList.add("delete");
-        usuwanie.onclick = function (){usunKolumne(column.id+'-lane')};
-        usuwanie.textContent = "delete";
+        usuwanie.onclick = function () {
+            usunKolumne(column.dataset.colid);
+        };
+        usuwanie.textContent = "Usuń";
         const edytowanie = document.createElement("button");
         edytowanie.classList.add("edit");
-        edytowanie.onclick = function (){edytujKolumne(column.id+'-lane')};
-        edytowanie.textContent = "Edit";
-        column.appendChild(usuwanie);
-        column.appendChild(edytowanie);
+        edytowanie.onclick = function () {
+            console.log(column.dataset.colid);
+            edytujKolumne(column.dataset.colid);
+        };
+        edytowanie.textContent = "Edytuj";
+        const move_left = document.createElement("button");
+        move_left.classList.add("move-left");
+        move_left.onclick = function () {
+            moveColumnLeft(column.id);
+        };
+        move_left.textContent = "<";
+        const move_right = document.createElement("button");
+        move_right.classList.add("move-right");
+        move_right.onclick = function () {
+            moveColumnRight(column.id);
+        };
+        move_right.textContent = ">";
+        przyciskiDiv.appendChild(move_left);
+        przyciskiDiv.appendChild(edytowanie);
+        przyciskiDiv.appendChild(usuwanie);
+        przyciskiDiv.appendChild(move_right);
+        column.appendChild(przyciskiDiv);
 
     }
 
-    function cancelColumnChanges(column){//nie dziala
-        var columnDiv = document.getElementById(column.id+"-lane");
+    function cancelColumnChanges(column) {//nie dziala
+        var columnDiv = document.getElementById(column.id + "-lane");
         columnDiv.textContent = column.name;
         giveColumnButtons(column);
     }
 
     function edytujKolumne(nazwa) {
+        console.log(nazwa);
         const columnLane = document.getElementById(nazwa + "-lane");
+        console.log(columnLane)
+        if (columnLane.dataset.editing === "0") {
+            columnLane.dataset.editing = "1";
+        } else {
+            return
+        }
         let maxElement = columnLane.querySelector(".licznik");
         const nameElement = columnLane.querySelector(".nazwa h4");
 
@@ -543,8 +600,12 @@
         nameElement.appendChild(nameInput);
 
         const maxInput = document.createElement("input");
+        let maxValue = ""
+        if(maxElement.dataset.max != "None" && maxElement.dataset.max != "null"){
+            maxValue = maxElement.dataset.max;
+        }
         maxInput.type = "text";
-        maxInput.value = maxElement.dataset.max ? maxElement.dataset.max : '';
+        maxInput.value = maxValue;
         maxElement.textContent = '';
         maxElement.appendChild(maxInput);
 
@@ -552,16 +613,17 @@
         submitButton.type = "submit";
         submitButton.name = "edit";
         submitButton.classList.add("edit");
+        submitButton.classList.add("SubmitChangesButton");
         submitButton.innerText = "✅";
         submitButton.onclick = function () {
             acceptColumnChanges(columnLane, nameInput.value, maxInput.value);
         };
 
-        columnLane.appendChild(submitButton);
+        columnLane.insertBefore(submitButton,columnLane.getElementsByClassName("przyciski")[0]);
     }
 
     function usunKolumne(id) {
-        const kolumna = document.getElementById(id+'-lane');
+        const kolumna = document.getElementById(id + '-lane');
         const csrftoken = getCookie('csrftoken');
         fetch("/api/columns/", {
             method: "Delete",
@@ -569,9 +631,9 @@
                 "Content-Type": "application/json",
                 'X-CSRFToken': csrftoken
             },
-                body: JSON.stringify({id: id})
-        }).then((response)=>{
-            if(response.status == 204){
+            body: JSON.stringify({id: id})
+        }).then((response) => {
+            if (response.status == 204) {
                 kolumna.remove();
             }
         });

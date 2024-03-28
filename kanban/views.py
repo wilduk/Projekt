@@ -88,19 +88,18 @@ class ColumnAPIView(APIView):
 
                 column.position = new_position
 
-            name = request.data.get('name', '')
+            name = request.data.get('name', None)
+            max_notes = request.data.get('max', "nic")
 
-            if request.data['name'] == '':
-                name = "Kolumna " + str(
-                    (Column.objects.order_by("-id").first().id + 1) if Column.objects.exists() else 1)
-            if 'max' in request.data:
-                if request.data['max'] == None:
+            if name is not None:
+                column.name = name
+            if max_notes is not "nic":
+                if max_notes is None:
                     column.max = None
                 elif request.data['max'] >= Note.objects.filter(column=column_id).count():
                     column.max = request.data['max']
                 else:
                     column.max = Note.objects.filter(column=column_id).count()
-            column.name = name
             column.save()
             return Response(ColumnSerializer(column).data, status=status.HTTP_200_OK)
         except Column.DoesNotExist:
