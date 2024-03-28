@@ -195,3 +195,28 @@ input {
     background: #cce19f;
     margin-right: 5px;
 }
+.maxtext {
+    width:80%;
+}
+
+.nametext {
+    width:90%;
+ }
+.paddington {
+    padding: 10px;
+
+
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.25);
+    color: black;
+    cursor: pointer;
+
+}
+
+.egzorcysta {
+  line-height: 2;
+  padding-top: 10px;
+  padding-bottom: 10px ;
+
+}
+
+

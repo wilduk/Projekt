@@ -20,22 +20,22 @@
                     <div class="licznik" data-max="{{ column.max }}">liczenie</div>
                 </div>
                 <div class="przyciski">
-                    <button type="button" class="move-left" onclick="moveColumnLeft('{{ column.id }}-lane')"><</button>
+                    <button type="button" class="move-left paddington" onclick="moveColumnLeft('{{ column.id }}-lane')"><</button>
                     <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
                     </button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
                     </button>
-                    <button type="button" class="move-right" onclick="moveColumnRight('{{ column.id }}-lane')">>
+                    <button type="button" class="move-right paddington" onclick="moveColumnRight('{{ column.id }}-lane')">>
                     </button>
                 </div>
                 <!-- Existing tasks -->
                 {% for note in notes %}
                     {% if note.column == column.id %}
-                        <div class="task" draggable="true" id="{{ note.id }}-note"
+                        <div class="task egzorcysta" draggable="true" id="{{ note.id }}-note"
                              data-noteid="{{ note.id }}" data-ogname="{{ note.name }}">{{ note.name }}
                             <div class="przyciski">
-                                <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button>
-                                <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button>
+                                <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">Edytuj</button>
+                                <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">Usuń</button>
                             </div>
                         </div>
                     {% endif %}
@@ -434,7 +434,7 @@
         button.type = "submit";
         button.name = "edit";
         button.classList.add('delete');
-        button.innerText = "❌";
+        button.innerText = "Anuluj";
         button.onclick = function () {
             // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
             cancelNoteChanges(task);
@@ -444,7 +444,7 @@
         cancel.name = "edit";
         cancel.classList.add('edit');
         cancel.classList.add('accept');
-        cancel.innerText = "✅";
+        cancel.innerText = "Akceptuj";
         cancel.onclick = function () {
             // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
             acceptNoteChanges(task, textbox.value);
@@ -622,6 +622,7 @@
         const nameElement = columnLane.querySelector(".nazwa h4");
 
         const nameInput = document.createElement("input");
+        nameInput.classList.add("nametext");
         nameInput.type = "text";
         nameInput.value = nameElement.textContent.trim();
         nameElement.textContent = '';
@@ -632,6 +633,7 @@
         if(maxElement.dataset.max != "None" && maxElement.dataset.max != "null"){
             maxValue = maxElement.dataset.max;
         }
+        maxInput.classList.add("maxtext");
         maxInput.type = "text";
         maxInput.value = maxValue;
         maxElement.textContent = '';
@@ -642,7 +644,7 @@
         submitButton.name = "edit";
         submitButton.classList.add("edit");
         submitButton.classList.add("accept");
-        submitButton.innerText = "✅";
+        submitButton.innerText = "Akceptuj";
         submitButton.onclick = function () {
             acceptColumnChanges(columnLane, nameInput.value, maxInput.value);
         };
@@ -652,7 +654,7 @@
         cancelButton.name = "edit";
         cancelButton.classList.add("edit");
         cancelButton.classList.add("delete");
-        cancelButton.innerText = "❌";
+        cancelButton.innerText = "Anuluj";
         cancelButton.onclick = function () {
             cancelColumnChanges(columnLane);
         };
