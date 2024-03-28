@@ -186,6 +186,7 @@
             // Create new task element
             const newTask = document.createElement("div");
             newTask.classList.add("task");
+            newTask.classList.add("egzorcysta");
             newTask.setAttribute("draggable", "true");
             newTask.id = taskData.id + "-note";
             newTask.innerText = taskData.name;
@@ -403,13 +404,13 @@
         usuwanie.onclick = function () {
             usunTaska(note.id);
         };
-        usuwanie.textContent = "🗑";
+        usuwanie.textContent = "Usuń";
         const edytowanie = document.createElement("button");
         edytowanie.classList.add("edytowanie");
         edytowanie.onclick = function () {
             edytujTaska(note.id);
         };
-        edytowanie.textContent = "E";
+        edytowanie.textContent = "Edytuj";
         przyciski.appendChild(edytowanie);
         przyciski.appendChild(usuwanie);
         note.appendChild(przyciski);
@@ -426,6 +427,7 @@
                 text += task.childNodes[i].textContent;
         textbox.value = text.trim(); // Użyj value zamiast textContent
         task.textContent = task.name;
+        textbox.style = "width: 100%";
         task.appendChild(textbox);
 
         const przyciski = document.createElement("div");
@@ -506,6 +508,7 @@
         const submit = document.createElement('button');
         submit.type = 'submit';
         submit.innerText = "Dodaj";
+        submit.style = "float: right;";
         //<button class="usuwanie">🗑</button>
         form.appendChild(input);
         form.appendChild(submit);
@@ -593,12 +596,14 @@
         edytowanie.textContent = "Edytuj";
         const move_left = document.createElement("button");
         move_left.classList.add("move-left");
+        move_left.classList.add("paddington");
         move_left.onclick = function () {
             moveColumnLeft(column.id);
         };
         move_left.textContent = "<";
         const move_right = document.createElement("button");
         move_right.classList.add("move-right");
+        move_right.classList.add("paddington");
         move_right.onclick = function () {
             moveColumnRight(column.id);
         };
