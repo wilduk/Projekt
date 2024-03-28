@@ -9,4 +9,4 @@ class ColumnAdmin(admin.ModelAdmin):
 
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
-    list_display = ['name', 'column']
+    list_display = ['name', 'column', 'position']
