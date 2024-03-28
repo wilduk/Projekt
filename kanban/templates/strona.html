@@ -177,6 +177,7 @@
             });
 
             if (!response.ok) {
+                window.alert("Limit zadań dla tej kolumny osiągnął max");
                 throw new Error("Failed to add task");
             }
 
@@ -252,6 +253,8 @@
             i += 1;
         }
 
+        let push = false
+
         zlicz(stary);
         zlicz(zone);
         const licznik = zone.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0]
@@ -260,6 +263,10 @@
                 stary.insertBefore(task, stary.children[starapoz]);
                 zlicz(stary);
                 zlicz(zone);
+                if(push === false){
+                    push = true;
+                    window.alert("Limit zadań dla tej kolumny osiągnął max");
+                }
             }
         } else {
 
