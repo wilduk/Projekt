@@ -107,7 +107,7 @@
             }
         }
 
-        if (nextColumn) {
+        if (nextColumn && nextColumn.id !== "add") {
             column.parentNode.insertBefore(nextColumn, column);
 
             const json = JSON.stringify({
