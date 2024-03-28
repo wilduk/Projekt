@@ -20,12 +20,12 @@
                     <div class="licznik" data-max="{{ column.max }}">liczenie</div>
                 </div>
                 <div class="przyciski">
-                    <button type="button" class="move-left paddington" onclick="moveColumnLeft('{{ column.id }}-lane')"><</button>
+                    <button type="button" class="move-left paddington" onclick="moveColumnLeft('{{ column.id }}-lane')">◀</button>
                     <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
                     </button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
                     </button>
-                    <button type="button" class="move-right paddington" onclick="moveColumnRight('{{ column.id }}-lane')">>
+                    <button type="button" class="move-right paddington" onclick="moveColumnRight('{{ column.id }}-lane')">▶
                     </button>
                 </div>
                 <!-- Existing tasks -->
@@ -42,7 +42,7 @@
                 {% endfor %}
                 <form id="{{ column.id }}-form" class="note-form">
                     <input type="text" placeholder="Nowe zadanie..." id="{{ column.id }}-input"/>
-                    <button type="submit">Dodaj</button>
+                    <button type="submit" style="float: right;">Dodaj</button>
                 </form>
             </div>
         {% endfor %}
@@ -600,14 +600,14 @@
         move_left.onclick = function () {
             moveColumnLeft(column.id);
         };
-        move_left.textContent = "<";
+        move_left.textContent = "◀";
         const move_right = document.createElement("button");
         move_right.classList.add("move-right");
         move_right.classList.add("paddington");
         move_right.onclick = function () {
             moveColumnRight(column.id);
         };
-        move_right.textContent = ">";
+        move_right.textContent = "▶";
         przyciskiDiv.appendChild(move_left);
         przyciskiDiv.appendChild(edytowanie);
         przyciskiDiv.appendChild(usuwanie);
