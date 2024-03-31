@@ -11,42 +11,53 @@
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
 </head>
 <body>
-<div class="board" id="app">
 {% verbatim %}
+<template id="kanban-columns">
+    <div class="swim-lane">
+        <div class="heading">
+            <div class="nazwa">
+                <h4 v-if="!isEditing">{{ column.name }}</h4>
+                <input v-if="isEditing" :value="editingName" />
+            </div>
+            <div :class="{ licznik: true, alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
+                {{ columnNotes.length }}
+                <span v-if="Number.isInteger(column.max)">
+                    / {{ column.max }}
+                </span>
+            </div>
+        </div>
+        <div class="przyciski">
+            <button type="button" :disabled="idx === 0" class="move-left paddington" @click="$parent.moveColumn(column.id, idx, -1)">◀</button>
+            <button v-if="!isEditing" type="submit" name="edit" class="edit" @click="edytujKolumne">Edytuj</button>
+            <button v-if="!isEditing" type="button" name="delete" class="delete" @click="$parent.deleteColumn(column.id)">Usuń</button>
+            <button v-if="isEditing" type="submit" name="submit" class="edit" @click="edytujKolumneAkcept">Akceptuj</button>
+            <button v-if="isEditing" type="submit" name="cancel" class="delete" @click="cancelNoteChanges">Anuluj</button>
+            <button type="button" :disabled="idx >= columns.length - 1" class="move-right paddington" @click="$parent.moveColumn(column.id, idx, 1)">▶</button>
+        </div>
+        <note-component
+            :note-id="note.id"
+            :update-note="$parent.updateNote"
+            v-for="note in columnNotes"
+        >
+            {{ note.name }}
+        </note-component>
+        <form class="note-form">
+            <input type="text" placeholder="Nowe zadanie..." />
+            <button type="submit" style="float: right;">Dodaj</button>
+        </form>
+    </div>
+</template>
+<div class="board" id="app">
     <div class="lanes" id="lanes">
-        <column-component :data-id="column.id" :notes="notes" v-for="(column, columnIdx) in columns">
-            {{ (columnNotes = notes.filter((note) => note.column === column.id), null) }}
-            <div class="heading">
-                <div class="nazwa">
-                    <h4>{{ column.name }}</h4>
-                </div>
-                <div :class="{ licznik: true, alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
-                    {{ columnNotes.length }}
-                    <span v-if="Number.isInteger(column.max)">
-                        / {{ column.max }}
-                    </span>
-                </div>
-            </div>
-            <div class="przyciski">
-                <button type="button" :disabled="columnIdx === 0" class="move-left paddington" @click="moveColumn(column.id, columnIdx, -1)">◀</button>
-                <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
-                </button>
-                <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
-                </button>
-                <button type="button" :disabled="columnIdx >= columns.length - 1" class="move-right paddington" @click="moveColumn(column.id, columnIdx, 1)">▶
-                </button>
-            </div>
-            <note-component
-                :note-id="note.id"
-                :update-note="updateNote"
-                v-for="note in columnNotes"
-            >
-                {{ note.name }}
-            </note-component>
-            <form class="note-form">
-                <input type="text" placeholder="Nowe zadanie..." />
-                <button type="submit" style="float: right;">Dodaj</button>
-            </form>
+        <column-component
+            :key="column.id"
+            v-for="(column, idx) in columns"
+            :data-id="column.id"
+            :column="column"
+            :idx="idx"
+            :columns="columns"
+            :notes="notes"
+        >
         </column-component>
         <button type="submit" class="circle" id="add" onclick="dodajKolumne()"></button>
     </div>
@@ -79,6 +90,9 @@
             method,
             body: body ? JSON.stringify(body) : undefined,
         }).then((response) => {
+            if (method === 'DELETE') {
+                return null;
+            }
             return response.json();
         });
     }
@@ -104,29 +118,6 @@
 
         return closestTask;
     };
-
-    const ColumnComponent = defineComponent({
-        template: `
-            <div class="swim-lane"><slot></slot></div>
-        `,
-        props: ['notes'],
-        mounted() {
-            this.$el.addEventListener('dragover', (e) => {
-                const column = this.$el;
-                e.preventDefault();
-
-                const bottomTask = insertAboveTask(column, e.clientY);
-                const curTask = document.querySelector(".is-dragging");
-
-                if (!bottomTask) {
-                    const form = this.$el.querySelector('form');
-                    column.insertBefore(curTask, form);
-                } else {
-                    column.insertBefore(curTask, bottomTask);
-                }
-            });
-        }
-    });
 
     const NoteComponent = defineComponent({
         template: `
@@ -163,17 +154,73 @@
                     column: parseInt(columnId),
                     position: pos,
                 });
-                // console.log({ updateNote: this.updateNote, pos, columnId, noteId: this.noteId });
             };
             this.$el.addEventListener('dragstart', () => dragstart());
             this.$el.addEventListener('dragend', (e) => dragend(e));
         },
     });
 
+    const ColumnComponent = defineComponent({
+        template: '#kanban-columns',
+        props: ['column', 'idx', 'columns', 'notes'],
+        components: {
+            NoteComponent,
+        },
+        data() {
+            return {
+                columnNotes: [],
+                isEditing: false,
+                editingName: '',
+            };
+        },
+        watch: {
+            notes: {
+                handler: 'filterNotes',
+                immediate: true
+            },
+            columns: {
+                handler: 'filterNotes',
+                immediate: true
+            },
+        },
+        methods: {
+            filterNotes() {
+                this.columnNotes = this.notes.filter((note) => note.column === this.column.id)
+            },
+            edytujKolumne() {
+                this.isEditing = true;
+                this.editingName = this.column.name;
+            },
+            edytujKolumneAkcept() {
+                this.isEditing = false;
+                this.editingName = this.$el.querySelector('input').value;
+                this.$parent.editColumn(this.column.id, this.editingName);
+            },
+            cancelNoteChanges() {
+                this.isEditing = false;
+            }
+        },
+        mounted() {
+            this.$el.addEventListener('dragover', (e) => {
+                const column = this.$el;
+                e.preventDefault();
+
+                const bottomTask = insertAboveTask(column, e.clientY);
+                const curTask = document.querySelector(".is-dragging");
+
+                if (!bottomTask) {
+                    const form = this.$el.querySelector('form');
+                    column.insertBefore(curTask, form);
+                } else {
+                    column.insertBefore(curTask, bottomTask);
+                }
+            });
+        }
+    });
+
     createApp({
         components: {
             ColumnComponent,
-            NoteComponent,
         },
         setup() {
             const columns = ref([]);
@@ -202,8 +249,8 @@
             });
             fetchColumns();
 
-            function moveColumn (columnId, columnIdx, przesuniecie) {
-                const position = columnIdx + 1;
+            function moveColumn (columnId, idx, przesuniecie) {
+                const position = idx + 1;
                 const newPosition = position + przesuniecie;
                 if (newPosition >= 1 && newPosition <= columns.value.length) {
                     return request('/api/columns/', 'PUT', {
@@ -215,10 +262,30 @@
                 }
             }
 
+            function editColumn (columnId, columnName, columnMax) {
+                return request('/api/columns/', 'PUT', {
+                    id: parseInt(columnId),
+                    name: columnName,
+                    max: columnMax,
+                }).then(() => {
+                    return fetchColumns();
+                });
+            }
+
+            function deleteColumn (columnId) {
+                return request('/api/columns/', 'DELETE', {
+                    id: parseInt(columnId),
+                }).then(() => {
+                    return fetchColumns();
+                });
+            }
+
             return {
                 columns,
                 notes,
                 moveColumn,
+                editColumn,
+                deleteColumn,
                 updateNote,
             }
         },
