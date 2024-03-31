@@ -32,7 +32,8 @@
                 {% for note in notes %}
                     {% if note.column == column.id %}
                         <div class="task egzorcysta" draggable="true" id="{{ note.id }}-note"
-                             data-noteid="{{ note.id }}" data-ogname="{{ note.name }}">{{ note.name }}
+                             data-noteid="{{ note.id }}" data-ogname="{{ note.name }}"
+                             data-personid="{{ note.person }}">{{ note.name }}
                             <div class="przyciski">
                                 <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">Edytuj</button>
                                 <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">Usuń</button>
