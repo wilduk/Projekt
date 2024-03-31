@@ -63,10 +63,21 @@ class ColumnAPIView(APIView):
             column_id = request.data['id']
             column = Column.objects.get(id=column_id)
             position = column.position
+
+            # move notes to other column
+            notes_to_update = Note.objects.filter(column=column_id)
+            column_target_position = position - 1 if position > 2 else position + 1
+            column_notes_target = Column.objects.get(position=column_target_position)
+            for note in notes_to_update:
+                note.column = column_notes_target
+                note.save()
+
+            # move other columns indexes
             columns_to_update = Column.objects.filter(position__gte=position)
             for col in columns_to_update:
                 col.position -= 1
                 col.save()
+
             column.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Column.DoesNotExist:
