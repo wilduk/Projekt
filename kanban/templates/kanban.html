@@ -14,26 +14,32 @@
 <div class="board" id="app">
 {% verbatim %}
     <div class="lanes" id="lanes">
-        <column-component :data-id="column.id" :notes="notes" v-for="column in columns">
+        <column-component :data-id="column.id" :notes="notes" v-for="(column, columnIdx) in columns">
+            {{ (columnNotes = notes.filter((note) => note.column === column.id), null) }}
             <div class="heading">
                 <div class="nazwa">
                     <h4>{{ column.name }}</h4>
                 </div>
-                <div class="licznik">liczenie</div>
+                <div :class="{ licznik: true, alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
+                    {{ columnNotes.length }}
+                    <span v-if="Number.isInteger(column.max)">
+                        / {{ column.max }}
+                    </span>
+                </div>
             </div>
             <div class="przyciski">
-                <button type="button" class="move-left paddington" onclick="moveColumnLeft('{{ column.id }}-lane')">◀</button>
+                <button type="button" :disabled="columnIdx === 0" class="move-left paddington" @click="moveColumn(column.id, columnIdx, -1)">◀</button>
                 <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
                 </button>
                 <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
                 </button>
-                <button type="button" class="move-right paddington" onclick="moveColumnRight('{{ column.id }}-lane')">▶
+                <button type="button" :disabled="columnIdx >= columns.length - 1" class="move-right paddington" @click="moveColumn(column.id, columnIdx, 1)">▶
                 </button>
             </div>
             <note-component
                 :note-id="note.id"
                 :update-note="updateNote"
-                v-for="note in notes.filter((note) => note.column === column.id)"
+                v-for="note in columnNotes"
             >
                 {{ note.name }}
             </note-component>
@@ -71,7 +77,7 @@
                 'X-CSRFToken': csrftoken
             },
             method,
-            body,
+            body: body ? JSON.stringify(body) : undefined,
         }).then((response) => {
             return response.json();
         });
@@ -152,11 +158,11 @@
                     }
                     i += 1;
                 }
-                this.updateNote(JSON.stringify({
+                this.updateNote({
                     id: parseInt(this.noteId),
                     column: parseInt(columnId),
                     position: pos,
-                }));
+                });
                 // console.log({ updateNote: this.updateNote, pos, columnId, noteId: this.noteId });
             };
             this.$el.addEventListener('dragstart', () => dragstart());
@@ -191,13 +197,28 @@
             };
             fetchNotes();
 
-            request('/api/columns/', 'GET').then((res) => {
+            const fetchColumns = () => request('/api/columns/', 'GET').then((res) => {
                 columns.value = res;
             });
+            fetchColumns();
+
+            function moveColumn (columnId, columnIdx, przesuniecie) {
+                const position = columnIdx + 1;
+                const newPosition = position + przesuniecie;
+                if (newPosition >= 1 && newPosition <= columns.value.length) {
+                    return request('/api/columns/', 'PUT', {
+                        id: parseInt(columnId),
+                        position: newPosition,
+                    }).then(() => {
+                        return fetchColumns();
+                    });
+                }
+            }
 
             return {
                 columns,
                 notes,
+                moveColumn,
                 updateNote,
             }
         },
