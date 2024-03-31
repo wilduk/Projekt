@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Kanban</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'styles.css' %}">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
+</head>
+<body>
+<div class="board" id="app">
+{% verbatim %}
+    <div class="lanes" id="lanes">
+        <column-component :data-id="column.id" :notes="notes" v-for="column in columns">
+            <div class="heading">
+                <div class="nazwa">
+                    <h4>{{ column.name }}</h4>
+                </div>
+                <div class="licznik">liczenie</div>
+            </div>
+            <div class="przyciski">
+                <button type="button" class="move-left paddington" onclick="moveColumnLeft('{{ column.id }}-lane')">◀</button>
+                <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
+                </button>
+                <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
+                </button>
+                <button type="button" class="move-right paddington" onclick="moveColumnRight('{{ column.id }}-lane')">▶
+                </button>
+            </div>
+            <note-component
+                :note-id="note.id"
+                :update-note="updateNote"
+                v-for="note in notes.filter((note) => note.column === column.id)"
+            >
+                {{ note.name }}
+            </note-component>
+            <form class="note-form">
+                <input type="text" placeholder="Nowe zadanie..." />
+                <button type="submit" style="float: right;">Dodaj</button>
+            </form>
+        </column-component>
+        <button type="submit" class="circle" id="add" onclick="dodajKolumne()"></button>
+    </div>
+{% endverbatim %}
+</div>
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function request(url, method, body) {
+        const csrftoken = getCookie('csrftoken');
+        return fetch(url, {
+            headers: {
+                "Content-Type": "application/json",
+                'X-CSRFToken': csrftoken
+            },
+            method,
+            body,
+        }).then((response) => {
+            return response.json();
+        });
+    }
+
+    const { createApp, defineComponent, onMounted, ref } = Vue;
+
+    const insertAboveTask = (zone, mouseY) => {
+        const els = zone.querySelectorAll(".task:not(.is-dragging)");
+
+        let closestTask = null;
+        let closestOffset = Number.NEGATIVE_INFINITY;
+
+        els.forEach((task) => {
+            const {top} = task.getBoundingClientRect();
+
+            const offset = mouseY - top;
+
+            if (offset < 0 && offset > closestOffset) {
+                closestOffset = offset;
+                closestTask = task;
+            }
+        });
+
+        return closestTask;
+    };
+
+    const ColumnComponent = defineComponent({
+        template: `
+            <div class="swim-lane"><slot></slot></div>
+        `,
+        props: ['notes'],
+        mounted() {
+            this.$el.addEventListener('dragover', (e) => {
+                const column = this.$el;
+                e.preventDefault();
+
+                const bottomTask = insertAboveTask(column, e.clientY);
+                const curTask = document.querySelector(".is-dragging");
+
+                if (!bottomTask) {
+                    const form = this.$el.querySelector('form');
+                    column.insertBefore(curTask, form);
+                } else {
+                    column.insertBefore(curTask, bottomTask);
+                }
+            });
+        }
+    });
+
+    const NoteComponent = defineComponent({
+        template: `
+            <div class="task egzorcysta" draggable="true">
+                <slot></slot>
+                <div class="przyciski">
+                    <button class="edytowanie">Edytuj</button>
+                    <button class="usuwanie">Usuń</button>
+                </div>
+            </div>
+        `,
+        props: ['noteId', 'updateNote'],
+        mounted() {
+            const dragstart = () => {
+                this.$el.classList.add("is-dragging");
+            };
+            const dragend = (e) => {
+                const task = this.$el;
+                task.classList.remove("is-dragging");
+                const column = task.closest(".swim-lane");
+                const columnId = column.dataset.id;
+                var pos = null;
+                var i = 1;
+
+                for (const element of column.querySelectorAll('.task')) {
+                    if (element == task) {
+                        pos = i;
+                        break;
+                    }
+                    i += 1;
+                }
+                this.updateNote(JSON.stringify({
+                    id: parseInt(this.noteId),
+                    column: parseInt(columnId),
+                    position: pos,
+                }));
+                // console.log({ updateNote: this.updateNote, pos, columnId, noteId: this.noteId });
+            };
+            this.$el.addEventListener('dragstart', () => dragstart());
+            this.$el.addEventListener('dragend', (e) => dragend(e));
+        },
+    });
+
+    createApp({
+        components: {
+            ColumnComponent,
+            NoteComponent,
+        },
+        setup() {
+            const columns = ref([]);
+            const notes = ref([]);
+
+            const fetchNotes = () => request('/api/notes/', 'GET').then((res) => {
+                res.sort((a, b) => {
+                    return a.position - b.position;
+                });
+                // console.log({ res, columns: columns.value });
+                // columns.value = [...columns.value];
+                notes.value = [];
+                setTimeout(() => {
+                    notes.value = res;
+                });
+                // console.log( { Vue });
+            });
+            const updateNote = (data) => {
+                return request('/api/notes/', 'PUT', data)
+                   .then(() => fetchNotes());
+            };
+            fetchNotes();
+
+            request('/api/columns/', 'GET').then((res) => {
+                columns.value = res;
+            });
+
+            return {
+                columns,
+                notes,
+                updateNote,
+            }
+        },
+    }).mount('#app')
+</script>
+</body>
+</html>
