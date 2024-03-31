@@ -4,10 +4,10 @@ from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Column, Note
+from .models import Column, Note, Person
 from django.views.generic.edit import CreateView
 from django.db import transaction
-from .serializers import ColumnSerializer, NoteSerializer
+from .serializers import ColumnSerializer, NoteSerializer, PersonSerializer
 
 
 class ColumnAPIView(APIView):
@@ -56,6 +56,15 @@ class ColumnAPIView(APIView):
         serializer = ColumnSerializer(columns, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def _move_notes_to_column(self, notes, column, person):
+        existing_notes = Note.objects.filter(column=column, person=person).order_by('-position')
+        position = existing_notes.first().position if len(existing_notes) > 0 else 0
+        for note in notes:
+            position = position + 1
+            note.column = column
+            note.position = position
+            note.save()
+
     def delete(self, request):
         try:
             if Column.objects.all().count() <= 2:
@@ -65,12 +74,14 @@ class ColumnAPIView(APIView):
             position = column.position
 
             # move notes to other column
-            notes_to_update = Note.objects.filter(column=column_id)
             column_target_position = position - 1 if position > 2 else position + 1
-            column_notes_target = Column.objects.get(position=column_target_position)
-            for note in notes_to_update:
-                note.column = column_notes_target
-                note.save()
+            column_target = Column.objects.get(position=column_target_position)
+            notes_to_update = Note.objects.filter(column=column_id, person=None)
+            self._move_notes_to_column(notes_to_update, column_target, None)
+            people = Person.objects.all().order_by("name")
+            for person in people:
+                notes_to_update = Note.objects.filter(column=column_id, person=person)
+                self._move_notes_to_column(notes_to_update, column_target, person)
 
             # move other columns indexes
             columns_to_update = Column.objects.filter(position__gte=position)
@@ -144,8 +155,8 @@ class NoteAPIView(APIView):
         name = request.data.get('name', 'notatka ' + str((Note.objects.order_by("-id").first().id+1) if Note.objects.exists() else 1))
         position = request.data.get("position", None)
         if position is None:
-            if Note.objects.filter(column=id).exists():
-                position = Note.objects.filter(column=id).order_by('-position').first().position + 1
+            if Note.objects.filter(column=id, person=None).exists():
+                position = Note.objects.filter(column=id, person=None).order_by('-position').first().position + 1
             else:
                 position = 1
         else:
@@ -157,14 +168,35 @@ class NoteAPIView(APIView):
                     note.save()
         note = Note.objects.create(name=name, column=column, position=position)
         note.save()
+        self._heal_column(column, None)
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def _prepare_place_in_column(self, column, person, position):
+        notes_to_increment = Note.objects.filter(column=column, person=person, position__gte=position)
+        notes_to_increment.update(position=models.F('position') + 1)
+
+    def _recalculate_old_column_positions(self, column, person, position):
+        notes_to_decrement = Note.objects.filter(column=column, person=person, position__gte=position)
+        notes_to_decrement.update(position=models.F('position') - 1)
+
+    def _heal_column(self, column, person):
+        pos = 1
+        notes_to_check = Note.objects.filter(column=column.id, person=person).order_by("position").all()
+        for note in notes_to_check:
+            if note.position != pos:
+                print("WARNING!!! Healing Column was required! Affected note:",
+                      'Col/person', column.id, '/', person.id if person else None,
+                      'Note', note.id, ':', note.position, '=>', pos)
+                note.position = pos
+                note.save()
+            pos = pos + 1
 
     def put(self, request):
         id = request.data.get('id', None)
         name = request.data.get('name', None)
-        column = request.data.get('column', None)
+        column_id = request.data.get('column', None)
+        person_id = request.data.get('person', None)
         new_pos = request.data.get('position', None)
         print(id)
 
@@ -179,32 +211,32 @@ class NoteAPIView(APIView):
         if name is not None:
             note.name = request.data["name"]
 
-        if column is not None and column != note.column:
-            notes_to_update = Note.objects.filter(column=note.column, position__gte=note.position)
-            notes_to_update.update(position=models.F('position') - 1)
-            if Column.objects.filter(id=column).exists():
-                note.column = Column.objects.get(id=column)
-            if new_pos is not None:
-                notes_to_update = Note.objects.filter(column=column, position__gte=new_pos)
-                notes_to_update.update(position=models.F('position') + 1)
-            else:
-                if Note.objects.filter(column=column).exists():
-                    new_pos = Note.objects.filter(column=column).order_by("-position").first().position + 1
-                else:
-                    new_pos = 1
-            note.position = new_pos
-        elif new_pos is not None and new_pos != note.position:
-            pos_min = Note.objects.filter(column=note.column).order_by("-position").first().position
-            new_pos += pos_min
-            notes_to_update = Note.objects.filter(column=note.column,
-                                                  position__gte=min(new_pos, note.position),
-                                                  position__lte=max(new_pos, note.position))
-            if new_pos > note.position:
-                notes_to_update.update(position=models.F('position') - 1)
-            else:
-                notes_to_update.update(position=models.F('position') + 1)
-            note.position = new_pos
-        note.save()
+        if column_id is not None:
+            column = Column.objects.get(id=column_id)
+            person = Person.objects.get(id=person_id) if person_id else None
+            if column.id != note.column.id or person != note.person:
+                old_column = note.column
+                old_person = note.person
+                self._prepare_place_in_column(column, person, new_pos)
+                self._recalculate_old_column_positions(note.column, note.person, note.position)
+                note.position = new_pos
+                note.column = column
+                note.person = person
+                note.save()
+                self._heal_column(old_column, old_person)
+                self._heal_column(note.column, note.person)
+            elif new_pos is not None and new_pos != note.position:
+                if new_pos > note.position:
+                    notes_to_decrement = Note.objects.filter(column=column, person=person,
+                                                             position__lte=new_pos, position__gte=note.position)
+                    notes_to_decrement.update(position=models.F('position') - 1)
+                elif new_pos < note.position:
+                    notes_to_increment = Note.objects.filter(column=column, person=person,
+                                                             position__lte=note.position, position__gte=new_pos)
+                    notes_to_increment.update(position=models.F('position') + 1)
+                note.position = new_pos
+                note.save()
+                self._heal_column(note.column, note.person)
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -216,3 +248,11 @@ class NoteAPIView(APIView):
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
         note.delete()
         return Response(status=status.HTTP_200_OK)
+
+
+class PersonAPIView(APIView):
+    def get(self, request):
+        people = Person.objects.all().order_by("name")
+
+        serializer = PersonSerializer(people, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

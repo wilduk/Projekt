@@ -16,5 +16,5 @@ class Note(models.Model):
     column = models.ForeignKey(Column, on_delete=models.CASCADE)
     position = models.IntegerField()
     name = models.CharField(max_length=100, null=True)
-    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True, blank=True)
 
