@@ -108,27 +108,15 @@ class ColumnAPIView(APIView):
 
 class ColumnHTMLView(View):
     def get(self, request):
-        api_view_instance = ColumnAPIView()
-        api_response = api_view_instance.get(request)
-        data = api_response.data
-
-        notes = Note.objects.order_by("position")
-        serializer = NoteSerializer(notes, many=True).data
-
-        return render(request, 'strona.html', {'columns': data, 'notes': serializer})
+        return render(request, 'kanban.html')
 
 
 class NoteAPIView(APIView):
     def get(self, request):
-        try:
-            id = request.GET.get('id')
-            column = Column.objects.get(id=id)
-            notes = Note.objects.filter(column=column).order_by('position')
+        notes = Note.objects.all().order_by("position")
 
-            serializer = NoteSerializer(notes, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Column.DoesNotExist:
-            return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = NoteSerializer(notes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         id = request.data['id']
