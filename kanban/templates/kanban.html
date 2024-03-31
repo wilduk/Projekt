@@ -11,9 +11,9 @@
 </head>
 <body>
 {% verbatim %}
-<template id="kanban-columns">
+<template id="kanban-column">
     <div class="swim-lane">
-        <div class="heading">
+        <div class="heading" v-if="showHead">
             <div class="nazwa">
                 <slot></slot>
                 <h4 v-if="!isEditing">{{ column.name }}</h4>
@@ -29,7 +29,7 @@
                 <input v-if="isEditing" v-model="editingMax" />
             </div>
         </div>
-        <div class="przyciski">
+        <div class="przyciski" v-if="showHead">
             <button type="button" :disabled="idx === 0" class="move-left paddington" @click="$parent.moveColumn(column.id, idx, -1)">◀</button>
             <button v-if="!isEditing" type="submit" name="edit" class="edit" @click="edytujKolumne">Edytuj</button>
             <button v-if="!isEditing" :disabled="columns.length <= 2" type="button" name="delete" class="delete" @click="$parent.deleteColumn(column.id)">Usuń</button>
@@ -37,33 +37,44 @@
             <button v-if="isEditing" type="submit" name="cancel" class="delete" @click="cancelNoteChanges">Anuluj</button>
             <button type="button" :disabled="idx >= columns.length - 1" class="move-right paddington" @click="$parent.moveColumn(column.id, idx, 1)">▶</button>
         </div>
+        <form v-if="showHead" class="note-form" @submit.prevent="submitNew">
+            <input type="text" placeholder="Nowe zadanie..." v-model="newName" />
+            <button type="submit" style="float: right;" :disabled="Number(column.max) && columnNotes.length >= column.max">Dodaj</button>
+        </form>
         <note-component
             :note="note"
             :add-note="$parent.addNote"
             :update-note="$parent.updateNote"
             :remove-note="$parent.removeNote"
-            v-for="note in columnNotes"
+            v-for="note in personNotes"
         >
         </note-component>
-        <form class="note-form" @submit.prevent="submitNew">
-            <input type="text" placeholder="Nowe zadanie..." v-model="newName" />
-            <button type="submit" style="float: right;" :disabled="Number(column.max) && columnNotes.length >= column.max">Dodaj</button>
-        </form>
     </div>
+</div>
 </template>
 <div class="board" id="app">
-    <div class="lanes" id="lanes">
+    <div class="lanes" id="lanes" v-for="person in people">
+        <div style="grid-column: 1;grid-row: 1;">
+            <div class="left-title-text">{{ person.name }}</div>
+        </div>
         <column-component
             :key="column.id"
             v-for="(column, idx) in columns"
+            :column-notes=""
             :data-id="column.id"
             :column="column"
+            :data-person="person.id || 0"
+            :person="person"
             :idx="idx"
             :columns="columns"
             :notes="notes"
+            :style="`grid-column: ${idx + 2};grid-row: 1;`"
+            :show-head="!person.id"
         >
         </column-component>
-        <button type="submit" class="circle" id="add" @click="addColumn()"></button>
+        <div v-if="!person.id" class="new-column-wrapper" :style="`grid-column: ${columns.length + 2}`">
+            <button type="submit" class="circle" id="add" @click="addColumn()"></button>
+        </div>
     </div>
 </div>
 <script>
@@ -161,6 +172,7 @@
                 task.classList.remove("is-dragging");
                 const column = task.closest(".swim-lane");
                 const columnId = column.dataset.id;
+                const personId = column.dataset.person;
                 var pos = null;
                 var i = 1;
 
@@ -171,11 +183,13 @@
                     }
                     i += 1;
                 }
-                this.updateNote({
+                this.updateNote(Object.assign({
                     id: parseInt(this.note.id),
                     column: parseInt(columnId),
                     position: pos,
-                });
+                }, parseInt(personId) && {
+                    person: parseInt(personId),
+                }));
             };
             this.$el.addEventListener('dragstart', () => dragstart());
             this.$el.addEventListener('dragend', (e) => dragend(e));
@@ -183,14 +197,15 @@
     });
 
     const ColumnComponent = defineComponent({
-        template: '#kanban-columns',
-        props: ['column', 'idx', 'columns', 'notes'],
+        template: '#kanban-column',
+        props: ['column', 'person', 'idx', 'columns', 'notes', 'showHead'],
         components: {
             NoteComponent,
         },
         data() {
             return {
                 columnNotes: [],
+                personNotes: [],
                 isEditing: false,
                 editingName: '',
                 editingMax: '',
@@ -206,10 +221,15 @@
                 handler: 'filterNotes',
                 immediate: true
             },
+            people: {
+                handler: 'filterNotes',
+                immediate: true
+            }
         },
         methods: {
             filterNotes() {
-                this.columnNotes = this.notes.filter((note) => note.column === this.column.id)
+                this.columnNotes = this.notes.filter((note) => note.column === this.column.id);
+                this.personNotes = this.columnNotes.filter((note) => note.person === this.person.id);
             },
             edytujKolumne() {
                 this.isEditing = true;
@@ -235,13 +255,7 @@
 
                 const bottomTask = insertAboveTask(column, e.clientY);
                 const curTask = document.querySelector(".is-dragging");
-
-                if (!bottomTask) {
-                    const form = this.$el.querySelector('form');
-                    column.insertBefore(curTask, form);
-                } else {
-                    column.insertBefore(curTask, bottomTask);
-                }
+                column.insertBefore(curTask, bottomTask);
             });
         }
     });
@@ -253,6 +267,7 @@
         setup() {
             const columns = ref([]);
             const notes = ref([]);
+            const people = ref([]);
 
             const fetchNotes = () => request('/api/notes/', 'GET').then((res) => {
                 res.sort((a, b) => {
@@ -329,9 +344,20 @@
                 });
             }
 
+            function fetchPeople() {
+                return request('/api/people/', 'GET').then((res) => {
+                    people.value = [
+                        { id: null, name: 'Default' },
+                        ...res
+                    ];
+                });
+            }
+            fetchPeople();
+
             return {
                 columns,
                 notes,
+                people,
                 addColumn,
                 moveColumn,
                 editColumn,
