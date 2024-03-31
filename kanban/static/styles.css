@@ -76,21 +76,32 @@ input {
     font-size: 22px;
     font-weight: bold;
     margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
 }
 
 .heading div {
-    float: left;
+     min-width: 20px;
 }
 
 .nazwa {
-    width: 70%;
-    text-align: left;
+    flex: 1;
 }
 
 .licznik {
-    width: 30%;
     text-align: right;
 }
+.licznik input {
+    width: 40px;
+    margin: 0;
+}
+
+.note-input {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
 .alert {
     color: #e85e5e;
 }
@@ -198,13 +209,6 @@ input {
     background: #cce19f;
     margin-right: 5px;
 }
-.maxtext {
-    width:80%;
-}
-
-.nametext {
-    width:90%;
- }
 
 
 .paddington {
@@ -218,7 +222,7 @@ input {
     color: black;
     cursor: pointer;
 }
-.paddington:disabled {
+button:disabled {
     background-color: #acacac;
     cursor: not-allowed;
 }

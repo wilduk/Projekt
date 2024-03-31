@@ -8,7 +8,6 @@
     {% load static %}
     <link rel="stylesheet" type="text/css" href="{% static 'styles.css' %}">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
 </head>
 <body>
 {% verbatim %}
@@ -16,34 +15,39 @@
     <div class="swim-lane">
         <div class="heading">
             <div class="nazwa">
+                <slot></slot>
                 <h4 v-if="!isEditing">{{ column.name }}</h4>
-                <input v-if="isEditing" :value="editingName" />
+                <input v-if="isEditing" v-model="editingName" />
             </div>
-            <div :class="{ licznik: true, alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
-                {{ columnNotes.length }}
-                <span v-if="Number.isInteger(column.max)">
-                    / {{ column.max }}
-                </span>
+            <div class="licznik">
+                <div v-if="!isEditing" :class="{ alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
+                    {{ columnNotes.length }}
+                    <span v-if="column.max">
+                        / {{ column.max }}
+                    </span>
+                </div>
+                <input v-if="isEditing" v-model="editingMax" />
             </div>
         </div>
         <div class="przyciski">
             <button type="button" :disabled="idx === 0" class="move-left paddington" @click="$parent.moveColumn(column.id, idx, -1)">◀</button>
             <button v-if="!isEditing" type="submit" name="edit" class="edit" @click="edytujKolumne">Edytuj</button>
-            <button v-if="!isEditing" type="button" name="delete" class="delete" @click="$parent.deleteColumn(column.id)">Usuń</button>
+            <button v-if="!isEditing" :disabled="columns.length <= 2" type="button" name="delete" class="delete" @click="$parent.deleteColumn(column.id)">Usuń</button>
             <button v-if="isEditing" type="submit" name="submit" class="edit" @click="edytujKolumneAkcept">Akceptuj</button>
             <button v-if="isEditing" type="submit" name="cancel" class="delete" @click="cancelNoteChanges">Anuluj</button>
             <button type="button" :disabled="idx >= columns.length - 1" class="move-right paddington" @click="$parent.moveColumn(column.id, idx, 1)">▶</button>
         </div>
         <note-component
-            :note-id="note.id"
+            :note="note"
+            :add-note="$parent.addNote"
             :update-note="$parent.updateNote"
+            :remove-note="$parent.removeNote"
             v-for="note in columnNotes"
         >
-            {{ note.name }}
         </note-component>
-        <form class="note-form">
-            <input type="text" placeholder="Nowe zadanie..." />
-            <button type="submit" style="float: right;">Dodaj</button>
+        <form class="note-form" @submit.prevent="submitNew">
+            <input type="text" placeholder="Nowe zadanie..." v-model="newName" />
+            <button type="submit" style="float: right;" :disabled="Number(column.max) && columnNotes.length >= column.max">Dodaj</button>
         </form>
     </div>
 </template>
@@ -59,9 +63,8 @@
             :notes="notes"
         >
         </column-component>
-        <button type="submit" class="circle" id="add" onclick="dodajKolumne()"></button>
+        <button type="submit" class="circle" id="add" @click="addColumn()"></button>
     </div>
-{% endverbatim %}
 </div>
 <script>
     function getCookie(name) {
@@ -90,6 +93,10 @@
             method,
             body: body ? JSON.stringify(body) : undefined,
         }).then((response) => {
+            if (!response.ok) {
+                response.json().then(({ error }) => alert(error));
+                return null;
+            }
             if (method === 'DELETE') {
                 return null;
             }
@@ -122,14 +129,29 @@
     const NoteComponent = defineComponent({
         template: `
             <div class="task egzorcysta" draggable="true">
-                <slot></slot>
+                <div v-if="!isEditing">{{ note.name }}</div>
+                <input class="note-input" v-if="isEditing" v-model="editingName" />
                 <div class="przyciski">
-                    <button class="edytowanie">Edytuj</button>
-                    <button class="usuwanie">Usuń</button>
+                    <button v-if="!isEditing" class="edytowanie" @click="edytujTaska(true)">Edytuj</button>
+                    <button v-if="!isEditing" class="usuwanie" @click="removeNote(note.id)">Usuń</button>
+                    <button v-if="isEditing" class="edytowanie">Akceptuj</button>
+                    <button v-if="isEditing" class="usuwanie" @click="edytujTaska(false)">Anuluj</button>
                 </div>
             </div>
         `,
-        props: ['noteId', 'updateNote'],
+        props: ['note', 'addNote', 'updateNote', 'removeNote'],
+        data() {
+            return {
+                isEditing: false,
+                editingName: '',
+            };
+        },
+        methods: {
+            edytujTaska(isEditing) {
+                this.isEditing = isEditing;
+                this.editingName = this.note.name;
+            }
+        },
         mounted() {
             const dragstart = () => {
                 this.$el.classList.add("is-dragging");
@@ -150,7 +172,7 @@
                     i += 1;
                 }
                 this.updateNote({
-                    id: parseInt(this.noteId),
+                    id: parseInt(this.note.id),
                     column: parseInt(columnId),
                     position: pos,
                 });
@@ -171,6 +193,8 @@
                 columnNotes: [],
                 isEditing: false,
                 editingName: '',
+                editingMax: '',
+                newName: '',
             };
         },
         watch: {
@@ -190,14 +214,18 @@
             edytujKolumne() {
                 this.isEditing = true;
                 this.editingName = this.column.name;
+                this.editingMax = this.column.max;
             },
             edytujKolumneAkcept() {
                 this.isEditing = false;
-                this.editingName = this.$el.querySelector('input').value;
-                this.$parent.editColumn(this.column.id, this.editingName);
+                this.$parent.editColumn(this.column.id, this.editingName, parseInt(this.editingMax));
             },
             cancelNoteChanges() {
                 this.isEditing = false;
+            },
+            submitNew() {
+                this.$parent.addNote(this.column.id, this.newName);
+                this.newName = '';
             }
         },
         mounted() {
@@ -230,19 +258,31 @@
                 res.sort((a, b) => {
                     return a.position - b.position;
                 });
-                // console.log({ res, columns: columns.value });
-                // columns.value = [...columns.value];
                 notes.value = [];
                 setTimeout(() => {
                     notes.value = res;
                 });
-                // console.log( { Vue });
             });
+            fetchNotes();
             const updateNote = (data) => {
                 return request('/api/notes/', 'PUT', data)
                    .then(() => fetchNotes());
             };
-            fetchNotes();
+            const addNote = (columnId, name) => {
+                return request('/api/notes/', 'POST', {
+                    id: parseInt(columnId),
+                    name: name,
+                }).then(() => {
+                    return fetchNotes();
+                });
+            };
+            const removeNote = (id) => {
+                return request('/api/notes/', 'DELETE', {
+                    id: parseInt(id),
+                }).then(() => {
+                    return fetchNotes();
+                });
+            }
 
             const fetchColumns = () => request('/api/columns/', 'GET').then((res) => {
                 columns.value = res;
@@ -277,19 +317,32 @@
                     id: parseInt(columnId),
                 }).then(() => {
                     return fetchColumns();
+                }).then(() => {
+                    return fetchNotes();
+                });
+            }
+
+            function addColumn() {
+                return request('/api/columns/', 'POST', {
+                }).then(() => {
+                    return fetchColumns();
                 });
             }
 
             return {
                 columns,
                 notes,
+                addColumn,
                 moveColumn,
                 editColumn,
                 deleteColumn,
                 updateNote,
+                removeNote,
+                addNote,
             }
         },
     }).mount('#app')
 </script>
+{% endverbatim %}
 </body>
 </html>
