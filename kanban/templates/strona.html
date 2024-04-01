@@ -20,29 +20,30 @@
                     <div class="licznik" data-max="{{ column.max }}">liczenie</div>
                 </div>
                 <div class="przyciski">
-                    <button type="button" class="move-left" onclick="moveColumnLeft('{{ column.id }}-lane')"><</button>
+                    <button type="button" class="move-left paddington" onclick="moveColumnLeft('{{ column.id }}-lane')">◀</button>
                     <button type="submit" name="edit" class="edit" onclick="edytujKolumne('{{ column.id }}')">Edytuj
                     </button>
                     <button type="button" name="delete" class="delete" onclick="usunKolumne('{{ column.id }}')">Usuń
                     </button>
-                    <button type="button" class="move-right" onclick="moveColumnRight('{{ column.id }}-lane')">>
+                    <button type="button" class="move-right paddington" onclick="moveColumnRight('{{ column.id }}-lane')">▶
                     </button>
                 </div>
                 <!-- Existing tasks -->
                 {% for note in notes %}
                     {% if note.column == column.id %}
-                        <div class="task" draggable="true" id="{{ note.id }}-note"
-                             data-noteid="{{ note.id }}" data-ogname="{{ note.name }}">{{ note.name }}
+                        <div class="task egzorcysta" draggable="true" id="{{ note.id }}-note"
+                             data-noteid="{{ note.id }}" data-ogname="{{ note.name }}"
+                             data-personid="{{ note.person }}">{{ note.name }}
                             <div class="przyciski">
-                                <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">E</button>
-                                <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">🗑</button>
+                                <button class="edytowanie" onclick="edytujTaska('{{ note.id }}-note')">Edytuj</button>
+                                <button class="usuwanie" onclick="usunTaska('{{ note.id }}-note')">Usuń</button>
                             </div>
                         </div>
                     {% endif %}
                 {% endfor %}
                 <form id="{{ column.id }}-form" class="note-form">
                     <input type="text" placeholder="Nowe zadanie..." id="{{ column.id }}-input"/>
-                    <button type="submit">Dodaj</button>
+                    <button type="submit" style="float: right;">Dodaj</button>
                 </form>
             </div>
         {% endfor %}
@@ -177,6 +178,7 @@
             });
 
             if (!response.ok) {
+                window.alert("Limit zadań dla tej kolumny osiągnął max");
                 throw new Error("Failed to add task");
             }
 
@@ -186,6 +188,7 @@
             // Create new task element
             const newTask = document.createElement("div");
             newTask.classList.add("task");
+            newTask.classList.add("egzorcysta");
             newTask.setAttribute("draggable", "true");
             newTask.id = taskData.id + "-note";
             newTask.innerText = taskData.name;
@@ -251,6 +254,8 @@
             i += 1;
         }
 
+        let push = false
+
         zlicz(stary);
         zlicz(zone);
         const licznik = zone.getElementsByClassName("heading")[0].getElementsByClassName("licznik")[0]
@@ -259,6 +264,10 @@
                 stary.insertBefore(task, stary.children[starapoz]);
                 zlicz(stary);
                 zlicz(zone);
+                if(push === false){
+                    push = true;
+                    window.alert("Limit zadań dla tej kolumny osiągnął max");
+                }
             }
         } else {
 
@@ -403,13 +412,13 @@
         usuwanie.onclick = function () {
             usunTaska(note.id);
         };
-        usuwanie.textContent = "🗑";
+        usuwanie.textContent = "Usuń";
         const edytowanie = document.createElement("button");
         edytowanie.classList.add("edytowanie");
         edytowanie.onclick = function () {
             edytujTaska(note.id);
         };
-        edytowanie.textContent = "E";
+        edytowanie.textContent = "Edytuj";
         przyciski.appendChild(edytowanie);
         przyciski.appendChild(usuwanie);
         note.appendChild(przyciski);
@@ -418,6 +427,7 @@
     function edytujTaska(nazwa) { //nie dziala(prawie dziala)
         const task = document.getElementById(nazwa);
         const textbox = document.createElement("input");
+        textbox.classList.add("tasktext");
         textbox.type = "text";
         var text = '';
         for (var i = 0; i < task.childNodes.length; ++i)
@@ -425,16 +435,18 @@
                 text += task.childNodes[i].textContent;
         textbox.value = text.trim(); // Użyj value zamiast textContent
         task.textContent = task.name;
+        textbox.style = "width: 100%";
         task.appendChild(textbox);
 
         const przyciski = document.createElement("div");
         przyciski.classList.add("przyciski");
+        przyciski.classList.add("egzorcysta");
 
         const button = document.createElement("button");
         button.type = "submit";
         button.name = "edit";
         button.classList.add('delete');
-        button.innerText = "❌";
+        button.innerText = "Anuluj";
         button.onclick = function () {
             // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
             cancelNoteChanges(task);
@@ -444,7 +456,7 @@
         cancel.name = "edit";
         cancel.classList.add('edit');
         cancel.classList.add('accept');
-        cancel.innerText = "✅";
+        cancel.innerText = "Akceptuj";
         cancel.onclick = function () {
             // Przekazuj wartość textbox.value do funkcji acceptNoteChanges
             acceptNoteChanges(task, textbox.value);
@@ -504,6 +516,7 @@
         const submit = document.createElement('button');
         submit.type = 'submit';
         submit.innerText = "Dodaj";
+        submit.style = "float: right;";
         //<button class="usuwanie">🗑</button>
         form.appendChild(input);
         form.appendChild(submit);
@@ -591,16 +604,18 @@
         edytowanie.textContent = "Edytuj";
         const move_left = document.createElement("button");
         move_left.classList.add("move-left");
+        move_left.classList.add("paddington");
         move_left.onclick = function () {
             moveColumnLeft(column.id);
         };
-        move_left.textContent = "<";
+        move_left.textContent = "◀";
         const move_right = document.createElement("button");
         move_right.classList.add("move-right");
+        move_right.classList.add("paddington");
         move_right.onclick = function () {
             moveColumnRight(column.id);
         };
-        move_right.textContent = ">";
+        move_right.textContent = "▶";
         przyciskiDiv.appendChild(move_left);
         przyciskiDiv.appendChild(edytowanie);
         przyciskiDiv.appendChild(usuwanie);
@@ -622,6 +637,7 @@
         const nameElement = columnLane.querySelector(".nazwa h4");
 
         const nameInput = document.createElement("input");
+        nameInput.classList.add("nametext");
         nameInput.type = "text";
         nameInput.value = nameElement.textContent.trim();
         nameElement.textContent = '';
@@ -632,6 +648,7 @@
         if(maxElement.dataset.max != "None" && maxElement.dataset.max != "null"){
             maxValue = maxElement.dataset.max;
         }
+        maxInput.classList.add("maxtext");
         maxInput.type = "text";
         maxInput.value = maxValue;
         maxElement.textContent = '';
@@ -642,7 +659,7 @@
         submitButton.name = "edit";
         submitButton.classList.add("edit");
         submitButton.classList.add("accept");
-        submitButton.innerText = "✅";
+        submitButton.innerText = "Akceptuj";
         submitButton.onclick = function () {
             acceptColumnChanges(columnLane, nameInput.value, maxInput.value);
         };
@@ -652,7 +669,7 @@
         cancelButton.name = "edit";
         cancelButton.classList.add("edit");
         cancelButton.classList.add("delete");
-        cancelButton.innerText = "❌";
+        cancelButton.innerText = "Anuluj";
         cancelButton.onclick = function () {
             cancelColumnChanges(columnLane);
         };

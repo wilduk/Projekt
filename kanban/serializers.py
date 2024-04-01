@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Column, Note
+from .models import Column, Note, Person
 
 
 class ColumnSerializer(serializers.ModelSerializer):
@@ -11,4 +11,10 @@ class ColumnSerializer(serializers.ModelSerializer):
 class NoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note
+        fields = '__all__'
+
+
+class PersonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Person
         fields = '__all__'
