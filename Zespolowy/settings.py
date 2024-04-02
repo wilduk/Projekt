@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure--@82_a09pf+_@9m^gz=50fyq)+&5ht=+e2pfzb*q)tqh3te+qn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['pack.force.ovh']
 
 
 # Application definition

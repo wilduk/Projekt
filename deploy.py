@@ -3,14 +3,13 @@ import sys
 import json
 
 if len(sys.argv) < 6:
-    print("Usage: python deploy.py <URL> <API_KEY> <STACK_ID> <ENDPOINT_ID> <PROJECT_VERSION>")
+    print("Usage: python deploy.py <URL> <API_KEY> <STACK_ID> <PROJECT_VERSION>")
     sys.exit(1)
 
 url = sys.argv[1]
 api_key = sys.argv[2]
 stack_id = sys.argv[3]
-endpoint_id = sys.argv[4]
-project_version = sys.argv[5]
+project_version = sys.argv[4]
 
 stacks_url = url + 'stacks/' + stack_id
 headers = {'Content-Type': 'application/json', 'X-API-Key': api_key}
