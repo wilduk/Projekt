@@ -24,6 +24,11 @@ pipeline {
 
                     git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
                     env.AUTHOR = currentBuild.getBuildCauses()[0].shortDescription
+                    def lastCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD~1'
+                    echo sh(
+                       script: "git log --pretty=format:'%s' $lastCommit..HEAD",
+                       returnStdout: true
+                    ).trim()
                     echo "AUTHOR: ${env.AUTHOR}"
                     docker.build(env.IMAGE_NAME, "-f Dockerfile .")
                 }
