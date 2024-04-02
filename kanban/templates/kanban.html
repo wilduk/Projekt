@@ -17,16 +17,36 @@
             <div class="nazwa">
                 <slot></slot>
                 <h4 v-if="!isEditing">{{ column.name }}</h4>
-                <input v-if="isEditing" v-model="editingName" />
+                <input type="text" v-if="isEditing" v-model="editingName" />
             </div>
             <div class="licznik">
-                <div v-if="!isEditing" :class="{ alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
+                <div v-if="!isEditing && !showMax" :class="{ alert: Number.isInteger(column.max) && columnNotes.length > column.max }">
                     {{ columnNotes.length }}
                     <span v-if="column.max">
                         / {{ column.max }}
                     </span>
                 </div>
-                <input v-if="isEditing" v-model="editingMax" />
+                <div v-if="!isEditing && showMax" :set="filteredNotes = columnNotes.filter((e) => e.column == column.id && e.person == person.id)" :class="{ alert: Number.isInteger(column.max) && filteredNotes.length > column.max }">
+                    {{ filteredNotes.length }}
+                    <span v-if="column.max">
+                        / {{ column.max }}
+                    </span>
+                    <span style="font-size: 15px">
+                        👤
+                    </span>
+                </div>
+                <input v-if="isEditing" v-model="editingMax"  />
+            </div>
+            <input type="checkbox" v-if="isEditing" v-model="editingPerPerson" />
+        </div>
+        <div class="heading" v-if="showMax && !showHead" :set="filteredNotes = columnNotes.filter((e) => e.column == column.id && e.person == person.id)">
+            <div class="licznik">
+                <div :class="{ alert: Number.isInteger(column.max) && filteredNotes.length > column.max }">
+                    {{ filteredNotes.length }}
+                    <span v-if="column.max">
+                        / {{ column.max }}
+                    </span>
+                </div>
             </div>
         </div>
         <div class="przyciski" v-if="showHead">
@@ -55,6 +75,7 @@
 <div class="board" id="app">
     <div class="lanes" id="lanes" v-for="person in people">
         <div style="grid-column: 1;grid-row: 1;">
+            <div class="left-title-text">{{ notes.filter((e) => e.person == person.id).length }}</div>
             <div class="left-title-text">{{ person.name }}</div>
         </div>
         <column-component
@@ -70,6 +91,7 @@
             :notes="notes"
             :style="`grid-column: ${idx + 2};grid-row: 1;`"
             :show-head="!person.id"
+            :show-max="column.per_person"
         >
         </column-component>
         <div v-if="!person.id" class="new-column-wrapper" :style="`grid-column: ${columns.length + 2}`">
@@ -145,7 +167,7 @@
                 <div class="przyciski">
                     <button v-if="!isEditing" class="edytowanie" @click="edytujTaska(true)">Edytuj</button>
                     <button v-if="!isEditing" class="usuwanie" @click="removeNote(note.id)">Usuń</button>
-                    <button v-if="isEditing" class="edytowanie">Akceptuj</button>
+                    <button v-if="isEditing" class="edytowanie" @click="edytujTaskaAkcept">Akceptuj</button>
                     <button v-if="isEditing" class="usuwanie" @click="edytujTaska(false)">Anuluj</button>
                 </div>
             </div>
@@ -161,7 +183,15 @@
             edytujTaska(isEditing) {
                 this.isEditing = isEditing;
                 this.editingName = this.note.name;
-            }
+            },
+            edytujTaskaAkcept() {
+                console.log("heh");
+                this.isEditing = false;
+                this.updateNote(Object.assign({
+                    id: this.note.id,
+                    name: this.editingName
+                }));
+            },
         },
         mounted() {
             const dragstart = () => {
@@ -198,7 +228,7 @@
 
     const ColumnComponent = defineComponent({
         template: '#kanban-column',
-        props: ['column', 'person', 'idx', 'columns', 'notes', 'showHead'],
+        props: ['column', 'person', 'idx', 'columns', 'notes', 'showHead', 'showMax'],
         components: {
             NoteComponent,
         },
@@ -209,6 +239,7 @@
                 isEditing: false,
                 editingName: '',
                 editingMax: '',
+                editingPerPerson: '',
                 newName: '',
             };
         },
@@ -235,10 +266,12 @@
                 this.isEditing = true;
                 this.editingName = this.column.name;
                 this.editingMax = this.column.max;
+                this.editingPerPerson = this.column.per_person;
             },
             edytujKolumneAkcept() {
+                console.log(this.editingPerPerson)
                 this.isEditing = false;
-                this.$parent.editColumn(this.column.id, this.editingName, parseInt(this.editingMax));
+                this.$parent.editColumn(this.column.id, this.editingName, parseInt(this.editingMax), this.editingPerPerson);
             },
             cancelNoteChanges() {
                 this.isEditing = false;
@@ -317,11 +350,12 @@
                 }
             }
 
-            function editColumn (columnId, columnName, columnMax) {
+            function editColumn (columnId, columnName, columnMax, per_person) {
                 return request('/api/columns/', 'PUT', {
                     id: parseInt(columnId),
                     name: columnName,
                     max: columnMax,
+                    per_person: per_person,
                 }).then(() => {
                     return fetchColumns();
                 });

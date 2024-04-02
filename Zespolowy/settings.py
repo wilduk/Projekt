@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure--@82_a09pf+_@9m^gz=50fyq)+&5ht=+e2pfzb*q)tqh3te+qn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = not os.environ.get('PROD', False)
 
-ALLOWED_HOSTS = ['127.0.0.1', 'pack.force.ovh', 'pack.force.ovh:8888']
+ALLOWED_HOSTS = ['127.0.0.1', 'pack.force.ovh', 'pack.force.ovh:8888', 'localhost', 'localhost:8000']
 CSRF_TRUSTED_ORIGINS = ['http://pack.force.ovh:8888']
 
 # Application definition

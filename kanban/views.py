@@ -112,16 +112,17 @@ class ColumnAPIView(APIView):
 
             name = request.data.get('name', None)
             max_notes = request.data.get('max', "nic")
+            per_person = request.data.get('per_person', None)
 
             if name is not None:
                 column.name = name
             if max_notes is not "nic":
                 if max_notes is None:
                     column.max = None
-                elif request.data['max'] >= Note.objects.filter(column=column_id).count():
-                    column.max = request.data['max']
                 else:
-                    column.max = Note.objects.filter(column=column_id).count()
+                    column.max = request.data['max']
+            if per_person is not None:
+                column.per_person = per_person
             column.save()
             return Response(ColumnSerializer(column).data, status=status.HTTP_200_OK)
         except Column.DoesNotExist:
@@ -199,6 +200,7 @@ class NoteAPIView(APIView):
         person_id = request.data.get('person', None)
         new_pos = request.data.get('position', None)
         print(id)
+        print(name)
 
         if id is None:
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
@@ -209,7 +211,7 @@ class NoteAPIView(APIView):
             return Response({"error": "Note does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
         if name is not None:
-            note.name = request.data["name"]
+            note.name = name
 
         if column_id is not None:
             column = Column.objects.get(id=column_id)
@@ -237,6 +239,7 @@ class NoteAPIView(APIView):
                 note.position = new_pos
                 note.save()
                 self._heal_column(note.column, note.person)
+        note.save()
         serializer = NoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
