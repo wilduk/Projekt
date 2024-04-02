@@ -21,6 +21,7 @@ pipeline {
                     env.IMAGE_NAME = image
                     echo "Version: $version"
                     echo "Image: $image"
+                    sh "printenv"
 
                     git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
                     env.GIT_AUTHOR_NAME = sh(
