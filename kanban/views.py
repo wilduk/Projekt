@@ -150,11 +150,6 @@ class NoteAPIView(APIView):
         if not request.data['id']:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
         column = Column.objects.get(id=id)
-        print(Note.objects.filter(id=id).count())
-        print(column.max)
-        if column.max is not None:
-            if Note.objects.filter(column=id).count() >= column.max:
-                return Response({"error": "Trying to add too many elements"}, status=status.HTTP_400_BAD_REQUEST)
         if column is None:
             return Response({"error": "Column does not exist"}, status=status.HTTP_404_NOT_FOUND)
         name = request.data.get('name', 'notatka ' + str((Note.objects.order_by("-id").first().id+1) if Note.objects.exists() else 1))

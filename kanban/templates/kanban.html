@@ -39,7 +39,7 @@
         </div>
         <form v-if="showHead" class="note-form" @submit.prevent="submitNew">
             <input type="text" placeholder="Nowe zadanie..." v-model="newName" />
-            <button type="submit" style="float: right;" :disabled="Number(column.max) && columnNotes.length >= column.max">Dodaj</button>
+            <button type="submit" style="float: right;">Dodaj</button>
         </form>
         <note-component
             :note="note"
