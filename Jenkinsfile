@@ -67,7 +67,7 @@ pipeline {
                         def apiKeyHeader = "-H 'X-API-Key:$apiToken'"
 
                         docker.image('python:3.10-alpine').inside {
-                            git branch: 'deploy', url: 'git@github.com:wilduk/Projekt.git'
+                            git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
                             sh 'pip install requests==2.31.0'
                             def result = sh script: "python deploy.py ${env.PORTAINER_API_URL} ${PORTAINER_TOKEN} ${env.PORTAINER_STACK_ID} ${env.PROJECT_VERSION}", returnStdout: true
                             echo result
