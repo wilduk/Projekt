@@ -23,11 +23,12 @@ pipeline {
                     echo "Image: $image"
 
                     git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
-                    env.GIT_AUTHOR_NAME = sh(
-                       script: "git --no-pager show -s --format='%ae'",
+                    env.AUTHOR = currentBuild.getBuildCauses()[0].shortDescription
+                    def lastCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: 'HEAD~1'
+                    echo sh(
+                       script: "git log --pretty=format:'%s' $lastCommit..HEAD",
                        returnStdout: true
                     ).trim()
-                    env.AUTHOR = currentBuild.getBuildCauses()[0].shortDescription
                     echo "AUTHOR: ${env.AUTHOR}"
                     docker.build(env.IMAGE_NAME, "-f Dockerfile .")
                 }
@@ -60,7 +61,7 @@ pipeline {
                         def icon = (currentBuild.currentResult == "SUCCESS") ? '💪' : '💥'
                         def message = (currentBuild.currentResult == "SUCCESS") ? "$icon Image built and pushed to gitea registry, version: ${env.PROJECT_VERSION}. Deploying to prod..." : "$icon Image push failed"
                         echo message
-                        discordSend description: "Build image - ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
+                        discordSend description: "Build image - ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL, showChangeset: true
                     }
                 }
             }
@@ -69,9 +70,6 @@ pipeline {
             steps {
                 script {
                     withCredentials([string(credentialsId: 'PORTAINER_TOKEN', variable: 'PORTAINER_TOKEN')]) {
-                        def apiToken = env.PORTAINER_API_TOKEN
-                        def apiKeyHeader = "-H 'X-API-Key:$apiToken'"
-
                         docker.image('python:3.10-alpine').inside {
                             git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
                             sh 'pip install requests==2.31.0'
