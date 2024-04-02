@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views import View
 from django.db import models
 from rest_framework.views import APIView
@@ -131,6 +131,11 @@ class ColumnAPIView(APIView):
 class ColumnHTMLView(View):
     def get(self, request):
         return render(request, 'kanban.html')
+
+
+class ColumnRedirectView(View):
+    def get(self, request):
+        return redirect('/columns')
 
 
 class NoteAPIView(APIView):

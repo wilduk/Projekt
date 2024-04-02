@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,10 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure--@82_a09pf+_@9m^gz=50fyq)+&5ht=+e2pfzb*q)tqh3te+qn'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = not os.environ.get('PROD', False)
 
-ALLOWED_HOSTS = ['pack.force.ovh']
-
+ALLOWED_HOSTS = ['127.0.0.1', 'pack.force.ovh', 'pack.force.ovh:8888']
+CSRF_TRUSTED_ORIGINS = ['http://pack.force.ovh:8888']
 
 # Application definition
 
