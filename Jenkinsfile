@@ -28,7 +28,8 @@ pipeline {
                        script: "git --no-pager show -s --format='%ae'",
                        returnStdout: true
                     ).trim()
-                    env.AUTHOR = env.GIT_BRANCH ? env.GIT_AUTHOR_NAME : "Jenkins"
+                    // env.AUTHOR = env.GIT_BRANCH ? env.GIT_AUTHOR_NAME : "Jenkins"
+                    env.AUTHOR = currentBuild.getBuildCauses()[0].shortDescription
                     echo "AUTHOR: ${env.AUTHOR}"
                     docker.build(env.IMAGE_NAME, "-f Dockerfile .")
                 }
