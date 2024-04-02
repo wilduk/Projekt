@@ -23,6 +23,7 @@ pipeline {
                     echo "Version: $version"
                     echo "Image: $image"
                     echo "AUTHOR: ${env.AUTHOR}"
+                    sh "printenv"
 
                     git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
                     docker.build(env.IMAGE_NAME, "-f Dockerfile .")
@@ -35,7 +36,7 @@ pipeline {
                         def icon = '💥'
                         def message = "$icon Image build failed"
                         echo message
-                        discordSend description: "Jenkins Pipeline: Build image by ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
+                        // discordSend description: "Jenkins Pipeline: Build image by ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
                     }
                 }
             }
@@ -56,7 +57,7 @@ pipeline {
                         def icon = (currentBuild.currentResult == "SUCCESS") ? '💪' : '💥'
                         def message = (currentBuild.currentResult == "SUCCESS") ? "$icon Image built and pushed to gitea registry, version: ${env.PROJECT_VERSION}. Deploying to prod..." : "$icon Image push failed"
                         echo message
-                        discordSend description: "Jenkins Pipeline: Build image by ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
+                        // discordSend description: "Jenkins Pipeline: Build image by ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
                     }
                 }
             }
@@ -83,7 +84,7 @@ pipeline {
                         def icon = (currentBuild.currentResult == "SUCCESS") ? '🚀' : '💥'
                         def message = (currentBuild.currentResult == "SUCCESS") ? "$icon Project successfully deployed to prod, version: ${env.PROJECT_VERSION}" : "$icon Deployment failed"
                         echo message
-                        discordSend description: "Jenkins Pipeline: Deploy by ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
+                        // discordSend description: "Jenkins Pipeline: Deploy by ${env.AUTHOR}", footer: message, link: env.BUILD_URL, result: currentBuild.currentResult, title: JOB_NAME, webhookURL: env.DISCORD_WEBHOOK_URL
                     }
                 }
             }
