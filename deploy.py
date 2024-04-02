@@ -2,7 +2,7 @@ import requests
 import sys
 import json
 
-if len(sys.argv) < 6:
+if len(sys.argv) < 5:
     print("Usage: python deploy.py <URL> <API_KEY> <STACK_ID> <PROJECT_VERSION>")
     sys.exit(1)
 
