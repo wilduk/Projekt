@@ -87,6 +87,7 @@ input {
     font-weight: bold;
     padding: 12px 6px;
     text-align: center;
+    margin-top: 5px;
 }
 
 .heading {
@@ -94,8 +95,8 @@ input {
     font-weight: bold;
     margin-bottom: 8px;
     display: flex;
-    justify-content: space-between;
     width: 100%;
+    justify-content: space-between;
 }
 
 .heading div {
@@ -106,12 +107,22 @@ input {
     flex: 1;
 }
 
+.nazwa input[type=text]{
+    width: 125px;
+}
+
 .licznik {
     text-align: right;
 }
-.licznik input {
+.licznik input{
     width: 40px;
+    height: 40px;
     margin: 0;
+}
+.heading input[type=checkbox]{
+    width: 20px;
+    height: 20px;
+    margin: 10px 0 0;
 }
 
 .note-input {
