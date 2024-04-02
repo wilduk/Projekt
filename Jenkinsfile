@@ -19,13 +19,16 @@ pipeline {
                     def version = env.PROJECT_VERSION
                     def image = "gitea.pack.force.ovh/lapserdaki/projekt-kanban:$version"
                     env.IMAGE_NAME = image
-                    env.AUTHOR = env.GIT_AUTHOR_NAME ?: "Jenkins"
                     echo "Version: $version"
                     echo "Image: $image"
-                    echo "AUTHOR: ${env.AUTHOR}"
-                    sh "printenv"
 
                     git branch: 'main', url: 'git@github.com:wilduk/Projekt.git'
+                    env.GIT_AUTHOR_NAME = sh(
+                       script: "git --no-pager show -s --format='%ae'",
+                       returnStdout: true
+                    ).trim()
+                    env.AUTHOR = env.GIT_BRANCH ? env.GIT_AUTHOR_NAME : "Jenkins"
+                    echo "AUTHOR: ${env.AUTHOR}"
                     docker.build(env.IMAGE_NAME, "-f Dockerfile .")
                 }
             }
