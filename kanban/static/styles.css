@@ -90,6 +90,13 @@ input {
     margin-top: 5px;
 }
 
+.left-title-text.left-title-number {
+    writing-mode: lr;
+    transform: none;
+    padding: 6px 0;
+    margin-top: 0;
+}
+
 .heading {
     font-size: 22px;
     font-weight: bold;

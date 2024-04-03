@@ -13,8 +13,8 @@
 {% verbatim %}
 <template id="kanban-column">
     <div class="swim-lane">
-        <div class="heading" v-if="showHead">
-            <div class="nazwa">
+        <div class="heading" v-if="showHead || showMax">
+            <div class="nazwa" v-if="showHead">
                 <slot></slot>
                 <h4 v-if="!isEditing">{{ column.name }}</h4>
                 <input type="text" v-if="isEditing" v-model="editingName" />
@@ -26,28 +26,18 @@
                         / {{ column.max }}
                     </span>
                 </div>
-                <div v-if="!isEditing && showMax" :set="filteredNotes = columnNotes.filter((e) => e.column == column.id && e.person == person.id)" :class="{ alert: Number.isInteger(column.max) && filteredNotes.length > column.max }">
+                <div v-if="!isEditing && showMax" :set="filteredNotes = personNotes" :class="{ alert: Number.isInteger(column.max) && filteredNotes.length > column.max }">
                     {{ filteredNotes.length }}
                     <span v-if="column.max">
                         / {{ column.max }}
                     </span>
-                    <span style="font-size: 15px">
+                    <span v-if="showHead" style="font-size: 15px">
                         👤
                     </span>
                 </div>
                 <input v-if="isEditing" v-model="editingMax"  />
             </div>
             <input type="checkbox" v-if="isEditing" v-model="editingPerPerson" />
-        </div>
-        <div class="heading" v-if="showMax && !showHead" :set="filteredNotes = columnNotes.filter((e) => e.column == column.id && e.person == person.id)">
-            <div class="licznik">
-                <div :class="{ alert: Number.isInteger(column.max) && filteredNotes.length > column.max }">
-                    {{ filteredNotes.length }}
-                    <span v-if="column.max">
-                        / {{ column.max }}
-                    </span>
-                </div>
-            </div>
         </div>
         <div class="przyciski" v-if="showHead">
             <button type="button" :disabled="idx === 0" class="move-left paddington" @click="$parent.moveColumn(column.id, idx, -1)">◀</button>
@@ -75,7 +65,7 @@
 <div class="board" id="app">
     <div class="lanes" id="lanes" v-for="person in people">
         <div style="grid-column: 1;grid-row: 1;">
-            <div class="left-title-text">{{ notes.filter((e) => e.person == person.id).length }}</div>
+            <div class="left-title-text left-title-number">{{ notes.filter((e) => e.person == person.id).length }}</div>
             <div class="left-title-text">{{ person.name }}</div>
         </div>
         <column-component
