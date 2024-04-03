@@ -63,7 +63,7 @@
 </div>
 </template>
 <div class="board" id="app">
-    <div class="lanes" id="lanes" v-for="person in people">
+    <div :key="rerender" class="lanes" id="lanes" v-for="person in people">
         <div style="grid-column: 1;grid-row: 1;">
             <div class="left-title-text left-title-number">{{ notes.filter((e) => e.person == person.id).length }}</div>
             <div class="left-title-text">{{ person.name }}</div>
@@ -291,15 +291,16 @@
             const columns = ref([]);
             const notes = ref([]);
             const people = ref([]);
+            const rerender = ref(false);
 
             const fetchNotes = () => request('/api/notes/', 'GET').then((res) => {
                 res.sort((a, b) => {
                     return a.position - b.position;
                 });
-                notes.value = [];
-                setTimeout(() => {
-                    notes.value = res;
-                });
+                notes.value = res;
+                // Użycie jako key, jego zmiana spowoduje wymuszenie przerenderowania
+                // Lepsze niż chwilowa pusta tablica, bo nie miga
+                rerender.value = !rerender.value;
             });
             fetchNotes();
             const updateNote = (data) => {
@@ -389,6 +390,7 @@
                 updateNote,
                 removeNote,
                 addNote,
+                rerender,
             }
         },
     }).mount('#app')
