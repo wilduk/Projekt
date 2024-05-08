@@ -20,6 +20,7 @@ from kanban.views import ColumnAPIView, ColumnRedirectView,  NoteAPIView, TeamAP
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/people/', PersonAPIView.as_view(), name='person-list'),
     path('api/columns/', ColumnAPIView.as_view()),
     path('api/notes/', NoteAPIView.as_view()),
     path('api/teams/', TeamAPIView.as_view()),

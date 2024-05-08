@@ -257,5 +257,45 @@ class TeamAPIView(APIView):
     def get(self, request):
         people = Team.objects.all().order_by("name")
 
+        serializer = TeamSerializer(people, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PersonAPIView(APIView):
+    def get(self, request):
+        people = Person.objects.all().order_by("name")
+
         serializer = PersonSerializer(people, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+    def post(self, request):
+        serializer = PersonSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        try:
+            person = Person.objects.get(pk=pk)
+        except Person.DoesNotExist:
+            return Response({"error": "Person does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PersonSerializer(person, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            person = Person.objects.get(pk=pk)
+        except Person.DoesNotExist:
+            return Response({"error": "Person does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        person.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+

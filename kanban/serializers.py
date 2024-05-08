@@ -14,7 +14,13 @@ class NoteSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PersonSerializer(serializers.ModelSerializer):
+class TeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
+        fields = '__all__'
+
+
+class PersonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Person
         fields = '__all__'
