@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Column, Note, Person
+from .models import Column, Note, Team
 
 
 @admin.register(Column)
@@ -11,6 +11,6 @@ class ColumnAdmin(admin.ModelAdmin):
 class NoteAdmin(admin.ModelAdmin):
     list_display = ['name', 'column', 'position', 'person']
 
-@admin.register(Person)
-class PersonAdmin(admin.ModelAdmin):
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
     list_display = ['name']

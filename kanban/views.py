@@ -4,7 +4,7 @@ from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Column, Note, Person
+from .models import Column, Note, Team
 from django.views.generic.edit import CreateView
 from django.db import transaction
 from .serializers import ColumnSerializer, NoteSerializer, PersonSerializer
@@ -78,7 +78,7 @@ class ColumnAPIView(APIView):
             column_target = Column.objects.get(position=column_target_position)
             notes_to_update = Note.objects.filter(column=column_id, person=None)
             self._move_notes_to_column(notes_to_update, column_target, None)
-            people = Person.objects.all().order_by("name")
+            people = Team.objects.all().order_by("name")
             for person in people:
                 notes_to_update = Note.objects.filter(column=column_id, person=person)
                 self._move_notes_to_column(notes_to_update, column_target, person)
@@ -215,7 +215,7 @@ class NoteAPIView(APIView):
 
         if column_id is not None:
             column = Column.objects.get(id=column_id)
-            person = Person.objects.get(id=person_id) if person_id else None
+            person = Team.objects.get(id=person_id) if person_id else None
             if column.id != note.column.id or person != note.person:
                 old_column = note.column
                 old_person = note.person
@@ -253,9 +253,9 @@ class NoteAPIView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class PersonAPIView(APIView):
+class TeamAPIView(APIView):
     def get(self, request):
-        people = Person.objects.all().order_by("name")
+        people = Team.objects.all().order_by("name")
 
         serializer = PersonSerializer(people, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -369,15 +369,15 @@
                 });
             }
 
-            function fetchPeople() {
-                return request('/api/people/', 'GET').then((res) => {
+            function fetchTeam() {
+                return request('/api/teams/', 'GET').then((res) => {
                     people.value = [
                         { id: null, name: 'Default' },
                         ...res
                     ];
                 });
             }
-            fetchPeople();
+            fetchTeam();
 
             return {
                 columns,
