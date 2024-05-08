@@ -4,10 +4,10 @@ from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Column, Note, Team
+from .models import Column, Note, Team, Person, PersonNote
 from django.views.generic.edit import CreateView
 from django.db import transaction
-from .serializers import ColumnSerializer, NoteSerializer, PersonSerializer
+from .serializers import ColumnSerializer, NoteSerializer, PersonSerializer, TeamSerializer, PersonNoteSerializer
 
 
 class ColumnAPIView(APIView):
@@ -269,33 +269,52 @@ class PersonAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class PersonNoteAPIView(APIView):
+    def get(self, request):
+        person_notes = PersonNote.objects.all()
+        serializer = PersonNoteSerializer(person_notes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def post(self, request):
-        serializer = PersonSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        person = request.data.get('person', None)
+        note = request.data.get('note', None)
+        if person is None or note is None:
+            return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
+        person = Person.objects.get(id=person)
+        note = Person.objects.get(id=note)
+        if person is None or note is None:
+            return Response({"error": "missing Object"}, status=status.HTTP_404_NOT_FOUND)
+        if PersonNote.objects.get(person=person, note=note):
+            return Response({"error": "This connection already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        PersonNote.objects.create(person=person, note=note)
+        return Response(status=status.HTTP_201_CREATED)
 
-    def put(self, request, pk):
-        try:
-            person = Person.objects.get(pk=pk)
-        except Person.DoesNotExist:
-            return Response({"error": "Person does not exist"}, status=status.HTTP_404_NOT_FOUND)
+    def put(self, request):
+        person = request.data.get('person', None)
+        note = request.data.get('note', None)
+        new_note = request.data.get('new', None)
+        if person is None or note is None or new_note is None:
+            return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
+        person = Person.objects.get(id=person)
+        note = Person.objects.get(id=note)
+        new_note = Person.objects.get(id=new_note)
+        if person is None or note is None or new_note is None:
+            return Response({"error": "missing Object"}, status=status.HTTP_404_NOT_FOUND)
+        connection = PersonNote.objects.get(note=note, person=person)
+        connection.note = new_note
+        connection.save()
 
-        serializer = PersonSerializer(person, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_200_OK)
 
-    def delete(self, request, pk):
-        try:
-            person = Person.objects.get(pk=pk)
-        except Person.DoesNotExist:
-            return Response({"error": "Person does not exist"}, status=status.HTTP_404_NOT_FOUND)
+    def delete(self, request):
+        person = request.data.get('person', None)
+        note = request.data.get('note', None)
+        if person is None or note is None:
+            return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
+        person = Person.objects.get(id=person)
+        note = Person.objects.get(id=note)
+        if person is None or note is None:
+            return Response({"error": "missing Object"}, status=status.HTTP_404_NOT_FOUND)
+        PersonNote.objects.get(person=person, note=note).delete()
 
-        person.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-
+        return Response(status=status.HTTP_402_PAYMENT_REQUIRED)
