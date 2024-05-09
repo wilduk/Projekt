@@ -4,10 +4,10 @@ from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Column, Note, Person
+from .models import Column, Note, Team, Person, PersonNote
 from django.views.generic.edit import CreateView
 from django.db import transaction
-from .serializers import ColumnSerializer, NoteSerializer, PersonSerializer
+from .serializers import ColumnSerializer, NoteSerializer, PersonSerializer, TeamSerializer, PersonNoteSerializer
 
 
 class ColumnAPIView(APIView):
@@ -78,7 +78,7 @@ class ColumnAPIView(APIView):
             column_target = Column.objects.get(position=column_target_position)
             notes_to_update = Note.objects.filter(column=column_id, person=None)
             self._move_notes_to_column(notes_to_update, column_target, None)
-            people = Person.objects.all().order_by("name")
+            people = Team.objects.all().order_by("name")
             for person in people:
                 notes_to_update = Note.objects.filter(column=column_id, person=person)
                 self._move_notes_to_column(notes_to_update, column_target, person)
@@ -215,7 +215,7 @@ class NoteAPIView(APIView):
 
         if column_id is not None:
             column = Column.objects.get(id=column_id)
-            person = Person.objects.get(id=person_id) if person_id else None
+            person = Team.objects.get(id=person_id) if person_id else None
             if column.id != note.column.id or person != note.person:
                 old_column = note.column
                 old_person = note.person
@@ -253,9 +253,71 @@ class NoteAPIView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
+class TeamAPIView(APIView):
+    def get(self, request):
+        people = Team.objects.all().order_by("name")
+
+        serializer = TeamSerializer(people, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class PersonAPIView(APIView):
     def get(self, request):
         people = Person.objects.all().order_by("name")
 
         serializer = PersonSerializer(people, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class PersonNoteAPIView(APIView):
+    def get(self, request):
+        person_notes = PersonNote.objects.all()
+        serializer = PersonNoteSerializer(person_notes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        person = request.data.get('person', None)
+        note = request.data.get('note', None)
+        if person is None or note is None:
+            return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
+        person = Person.objects.get(id=person)
+        note = Person.objects.get(id=note)
+        if person is None or note is None:
+            return Response({"error": "missing Object"}, status=status.HTTP_404_NOT_FOUND)
+        if PersonNote.objects.get(person=person, note=note):
+            return Response({"error": "This connection already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        PersonNote.objects.create(person=person, note=note)
+        return Response(status=status.HTTP_201_CREATED)
+
+    def put(self, request):
+        people = request.data.get('people', None)
+        note = request.data.get('note', None)
+        print(people)
+        if people is None or note is None:
+            return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
+        people = Person.objects.filter(id__in=people)
+        note = Note.objects.get(id=note)
+        if note is None:
+            return Response({"error": "missing note"}, status=status.HTTP_404_NOT_FOUND)
+        connections = PersonNote.objects.filter(note=note)
+        connections.delete()
+        for person in people:
+            connection = PersonNote.objects.create(person=person, note=note)
+            connection.save()
+
+        person_notes = PersonNote.objects.all()
+        serializer = PersonNoteSerializer(person_notes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        person = request.data.get('person', None)
+        note = request.data.get('note', None)
+        if person is None or note is None:
+            return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
+        person = Person.objects.get(id=person)
+        note = Person.objects.get(id=note)
+        if person is None or note is None:
+            return Response({"error": "missing Object"}, status=status.HTTP_404_NOT_FOUND)
+        PersonNote.objects.get(person=person, note=note).delete()
+
+        return Response(status=status.HTTP_402_PAYMENT_REQUIRED)

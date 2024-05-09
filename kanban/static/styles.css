@@ -270,7 +270,11 @@ button:disabled {
   line-height: 2;
   padding-top: 10px;
   padding-bottom: 10px ;
+}
 
+.person-image {
+    border-radius: 50%;
+    width: 25px;
 }
 
 
