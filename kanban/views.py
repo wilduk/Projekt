@@ -290,21 +290,24 @@ class PersonNoteAPIView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
     def put(self, request):
-        person = request.data.get('person', None)
+        people = request.data.get('people', None)
         note = request.data.get('note', None)
-        new_note = request.data.get('new', None)
-        if person is None or note is None or new_note is None:
+        print(people)
+        if people is None or note is None:
             return Response({"error": "missing ID"}, status=status.HTTP_404_NOT_FOUND)
-        person = Person.objects.get(id=person)
-        note = Person.objects.get(id=note)
-        new_note = Person.objects.get(id=new_note)
-        if person is None or note is None or new_note is None:
-            return Response({"error": "missing Object"}, status=status.HTTP_404_NOT_FOUND)
-        connection = PersonNote.objects.get(note=note, person=person)
-        connection.note = new_note
-        connection.save()
+        people = Person.objects.filter(id__in=people)
+        note = Note.objects.get(id=note)
+        if note is None:
+            return Response({"error": "missing note"}, status=status.HTTP_404_NOT_FOUND)
+        connections = PersonNote.objects.filter(note=note)
+        connections.delete()
+        for person in people:
+            connection = PersonNote.objects.create(person=person, note=note)
+            connection.save()
 
-        return Response(status=status.HTTP_200_OK)
+        person_notes = PersonNote.objects.all()
+        serializer = PersonNoteSerializer(person_notes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request):
         person = request.data.get('person', None)

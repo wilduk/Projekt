@@ -56,6 +56,9 @@
             :add-note="$parent.addNote"
             :update-note="$parent.updateNote"
             :remove-note="$parent.removeNote"
+            :update-people="$parent.updatePeople"
+            :people="people"
+            :connections="connections"
             v-for="note in personNotes"
         >
         </note-component>
@@ -63,7 +66,7 @@
 </div>
 </template>
 <div class="board" id="app">
-    <div :key="rerender" class="lanes" id="lanes" v-for="person in people">
+    <div :key="rerender" class="lanes" id="lanes" v-for="person in teams">
         <div style="grid-column: 1;grid-row: 1;">
             <div class="left-title-text left-title-number">{{ notes.filter((e) => e.person == person.id).length }}</div>
             <div class="left-title-text">{{ person.name }}</div>
@@ -82,6 +85,8 @@
             :style="`grid-column: ${idx + 2};grid-row: 1;`"
             :show-head="!person.id"
             :show-max="column.per_person"
+            :people="people"
+            :connections="connections"
         >
         </column-component>
         <div v-if="!person.id" class="new-column-wrapper" :style="`grid-column: ${columns.length + 2}`">
@@ -154,6 +159,14 @@
             <div class="task egzorcysta" draggable="true">
                 <div v-if="!isEditing">{{ note.name }}</div>
                 <input class="note-input" v-if="isEditing" v-model="editingName" />
+                <img class="person-image"
+                    v-if="!isEditing"
+                    v-for="person in connectedPeople"
+                    :src="'https://api.dicebear.com/8.x/avataaars-neutral/svg?seed='+person.name+'_'+person.surname+'&scale=80&backgroundColor=edb98a,ffdbb4,ffdfbf'"/>
+                <ul v-if="isEditing">
+                    <li v-for="person in people">{{ person.name }} {{ person.surname }}
+                    <input type="checkbox" :value="person.id" v-model="connectedPeopleIds"/></li>
+                </ul>
                 <div class="przyciski">
                     <button v-if="!isEditing" class="edytowanie" @click="edytujTaska(true)">Edytuj</button>
                     <button v-if="!isEditing" class="usuwanie" @click="removeNote(note.id)">Usuń</button>
@@ -162,14 +175,32 @@
                 </div>
             </div>
         `,
-        props: ['note', 'addNote', 'updateNote', 'removeNote'],
+        props: ['note', 'addNote', 'updateNote', 'removeNote', 'updatePeople', 'people', 'connections'],
         data() {
             return {
+                connectedPeople: [],
+                connectedPeopleIds: [],
                 isEditing: false,
                 editingName: '',
             };
         },
+        watch: {
+            people: {
+                handler: 'filterPeople',
+                immediate: true
+            },
+            connections: {
+                handler: 'filterPeople',
+                immediate: true
+            }
+        },
         methods: {
+            filterPeople() {
+                 this.connectedPeopleIds = this.connections
+                    .filter((connection) => connection.note === this.note.id)
+                    .map(connection => connection.person);
+                this.connectedPeople = this.people.filter(person => this.connectedPeopleIds.includes(person.id));
+            },
             edytujTaska(isEditing) {
                 this.isEditing = isEditing;
                 this.editingName = this.note.name;
@@ -177,6 +208,8 @@
             edytujTaskaAkcept() {
                 console.log("heh");
                 this.isEditing = false;
+                console.log(this.connectedPeopleIds);
+                this.updatePeople(this.note.id,this.connectedPeopleIds);
                 this.updateNote(Object.assign({
                     id: this.note.id,
                     name: this.editingName
@@ -218,7 +251,7 @@
 
     const ColumnComponent = defineComponent({
         template: '#kanban-column',
-        props: ['column', 'person', 'idx', 'columns', 'notes', 'showHead', 'showMax'],
+        props: ['column', 'person', 'idx', 'columns', 'notes', 'showHead', 'showMax', 'people', 'connections'],
         components: {
             NoteComponent,
         },
@@ -242,7 +275,7 @@
                 handler: 'filterNotes',
                 immediate: true
             },
-            people: {
+            teams: {
                 handler: 'filterNotes',
                 immediate: true
             }
@@ -259,7 +292,6 @@
                 this.editingPerPerson = this.column.per_person;
             },
             edytujKolumneAkcept() {
-                console.log(this.editingPerPerson)
                 this.isEditing = false;
                 this.$parent.editColumn(this.column.id, this.editingName, parseInt(this.editingMax), this.editingPerPerson);
             },
@@ -290,7 +322,9 @@
         setup() {
             const columns = ref([]);
             const notes = ref([]);
+            const teams = ref([]);
             const people = ref([]);
+            const connections = ref([]);
             const rerender = ref(false);
 
             const fetchNotes = () => request('/api/notes/', 'GET').then((res) => {
@@ -371,7 +405,7 @@
 
             function fetchTeam() {
                 return request('/api/teams/', 'GET').then((res) => {
-                    people.value = [
+                    teams.value = [
                         { id: null, name: 'Default' },
                         ...res
                     ];
@@ -379,17 +413,39 @@
             }
             fetchTeam();
 
+            const fetchPeople = () => request('/api/people/', 'GET').then((res) => {
+                people.value = res;
+            });
+            fetchPeople();
+
+            const fetchConnections = () => request('/api/notes/connections/', 'GET').then((res) => {
+                connections.value = res;
+            });
+            fetchConnections();
+
+            const updatePeople = (noteId, people) => {
+                return request('/api/notes/connections/', 'PUT', {
+                    note: parseInt(noteId),
+                    people: people
+                }).then(() => {
+                    return fetchConnections();
+                });
+            }
+
 
             return {
                 columns,
                 notes,
+                teams,
                 people,
+                connections,
                 addColumn,
                 moveColumn,
                 editColumn,
                 deleteColumn,
                 updateNote,
                 removeNote,
+                updatePeople,
                 addNote,
                 rerender,
             }
