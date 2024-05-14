@@ -273,8 +273,29 @@ button:disabled {
 }
 
 .person-image {
+    padding-right: 2px;
     border-radius: 50%;
     width: 25px;
 }
+.person-list {
+    text-align: center;
+    font-size: 80%;
+    list-style-type: none;
+}
 
+.person-list ul{
+    display: flex;
+    align-items: center;
+}
+.person-list input {
+    float: left;
+    margin: 0px;
+    padding-right: 2px;
+    width: 20px;
+    height: 20px;
+}
 
+.person-list img {
+    float: right;
+
+}

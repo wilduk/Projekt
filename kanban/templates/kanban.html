@@ -163,9 +163,13 @@
                     v-if="!isEditing"
                     v-for="person in connectedPeople"
                     :src="'https://api.dicebear.com/8.x/avataaars-neutral/svg?seed='+person.name+'_'+person.surname+'&scale=80&backgroundColor=edb98a,ffdbb4,ffdfbf'"/>
-                <ul v-if="isEditing">
-                    <li v-for="person in people">{{ person.name }} {{ person.surname }}
-                    <input type="checkbox" :value="person.id" v-model="connectedPeopleIds"/></li>
+                <ul class="person-list" v-if="isEditing">
+                    <li v-for="person in people">
+                    <input type="checkbox" :value="person.id" v-model="connectedPeopleIds"/>
+                    {{ person.name }} {{ person.surname }}
+                    <img class="person-image"
+                    :src="'https://api.dicebear.com/8.x/avataaars-neutral/svg?seed='+person.name+'_'+person.surname+'&scale=80&backgroundColor=edb98a,ffdbb4,ffdfbf'"/>
+                    </li>
                 </ul>
                 <div class="przyciski">
                     <button v-if="!isEditing" class="edytowanie" @click="edytujTaska(true)">Edytuj</button>
