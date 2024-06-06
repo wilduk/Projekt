@@ -43,7 +43,7 @@
             <button type="button" :disabled="idx === 0" class="move-left paddington" @click="$parent.moveColumn(column.id, idx, -1)">◀</button>
             <button v-if="!isEditing" type="submit" name="edit" class="edit" @click="edytujKolumne">Edytuj</button>
             <button v-if="!isEditing" :disabled="columns.length <= 2" type="button" name="delete" class="delete" @click="$parent.deleteColumn(column.id)">Usuń</button>
-            <button v-if="isEditing" type="submit" name="submit" class="edit" @click="edytujKolumneAkcept">Akceptuj</button>
+            <button v-if="isEditing" type="submit" name="submit" class="edit accept" @click="edytujKolumneAkcept">Akceptuj</button>
             <button v-if="isEditing" type="submit" name="cancel" class="delete" @click="cancelNoteChanges">Anuluj</button>
             <button type="button" :disabled="idx >= columns.length - 1" class="move-right paddington" @click="$parent.moveColumn(column.id, idx, 1)">▶</button>
         </div>
@@ -162,19 +162,21 @@
                 <img class="person-image"
                     v-if="!isEditing"
                     v-for="person in connectedPeople"
-                    :src="'https://api.dicebear.com/8.x/avataaars-neutral/svg?seed='+person.name+'_'+person.surname+'&scale=80&backgroundColor=edb98a,ffdbb4,ffdfbf'"/>
+                    :src="'https://api.dicebear.com/8.x/bottts-neutral/svg?seed='+person.name+'_'+person.surname"
+                    :title = "person.name+' '+person.surname"
+                />
                 <ul class="person-list" v-if="isEditing">
                     <li v-for="person in people">
                     <input type="checkbox" :value="person.id" v-model="connectedPeopleIds"/>
                     {{ person.name }} {{ person.surname }}
                     <img class="person-image"
-                    :src="'https://api.dicebear.com/8.x/avataaars-neutral/svg?seed='+person.name+'_'+person.surname+'&scale=80&backgroundColor=edb98a,ffdbb4,ffdfbf'"/>
+                    :src="'https://api.dicebear.com/8.x/bottts-neutral/svg?seed='+person.name+'_'+person.surname"/>
                     </li>
                 </ul>
                 <div class="przyciski">
                     <button v-if="!isEditing" class="edytowanie" @click="edytujTaska(true)">Edytuj</button>
                     <button v-if="!isEditing" class="usuwanie" @click="removeNote(note.id)">Usuń</button>
-                    <button v-if="isEditing" class="edytowanie" @click="edytujTaskaAkcept">Akceptuj</button>
+                    <button v-if="isEditing" class="accept" @click="edytujTaskaAkcept">Akceptuj</button>
                     <button v-if="isEditing" class="usuwanie" @click="edytujTaska(false)">Anuluj</button>
                 </div>
             </div>
